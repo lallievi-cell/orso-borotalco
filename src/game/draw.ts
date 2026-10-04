@@ -48,6 +48,39 @@ const THEME = {
     rug: "rgba(140,110,200,0.2)",
     wood: "#c984a8",
   },
+  giardino: {
+    sky0: "#e7f6d8",
+    sky1: "#b7dd8a",
+    wall: "#d7efb4",
+    wainscot: "#8fbf6a",
+    floor0: "#c6e39a",
+    floor1: "#7eaa55",
+    line: "rgba(255,255,255,0.35)",
+    rug: "rgba(70,140,60,0.18)",
+    wood: "#6e9a48",
+  },
+  lavanderia: {
+    sky0: "#eef6ff",
+    sky1: "#c5dff5",
+    wall: "#e4f0fa",
+    wainscot: "#b9d4ea",
+    floor0: "#d5e4f2",
+    floor1: "#8fb0c8",
+    line: "rgba(255,255,255,0.45)",
+    rug: "rgba(120,170,210,0.2)",
+    wood: "#7ea4c0",
+  },
+  terrazzo: {
+    sky0: "#dff4ff",
+    sky1: "#f8d9b0",
+    wall: "#f7e7cf",
+    wainscot: "#e7c8a0",
+    floor0: "#f0d2b0",
+    floor1: "#c99262",
+    line: "rgba(255,255,255,0.4)",
+    rug: "rgba(255,255,255,0.25)",
+    wood: "#d08a55",
+  },
   bagno: {
     sky0: "#eef8f6",
     sky1: "#c5e4dc",
@@ -147,6 +180,40 @@ function drawBackdrop(ctx: CanvasRenderingContext2D, sim: Sim, camX: number, cam
       ctx.fillStyle = "rgba(120,86,48,0.12)";
       roundRect(ctx, x + 48, 140, 44, 70, 6);
       ctx.fill();
+    }
+  } else if (sim.theme === "giardino") {
+    for (let i = 0; i < 5; i++) {
+      const x = 30 + i * 220 - (par % 220);
+      ctx.fillStyle = "rgba(70,140,70,0.28)";
+      ctx.beginPath();
+      ctx.arc(x + 40, 150, 34, 0, Math.PI * 2);
+      ctx.arc(x + 70, 140, 28, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (sim.theme === "lavanderia") {
+    ctx.strokeStyle = "rgba(90,110,130,0.35)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, 120);
+    ctx.lineTo(VIEW_W, 120);
+    ctx.stroke();
+    for (let i = 0; i < 6; i++) {
+      const x = 40 + i * 150 - (par % 150);
+      ctx.fillStyle = i % 2 ? "rgba(244,176,196,0.8)" : "rgba(180,214,240,0.85)";
+      ctx.fillRect(x, 122, 36, 28);
+    }
+  } else if (sim.theme === "terrazzo") {
+    ctx.strokeStyle = "rgba(120,90,60,0.28)";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(0, 210);
+    ctx.lineTo(VIEW_W, 210);
+    ctx.stroke();
+    for (let x = -((par * 0.4) % 48); x < VIEW_W; x += 48) {
+      ctx.beginPath();
+      ctx.moveTo(x, 188);
+      ctx.lineTo(x, 232);
+      ctx.stroke();
     }
   } else {
     ctx.strokeStyle = "rgba(255,255,255,0.45)";
@@ -272,7 +339,73 @@ function drawRoom(ctx: CanvasRenderingContext2D, sim: Sim, camX: number) {
   ctx.fill();
 }
 
+function pieceOn(s: Solid, t: number) {
+  if (!s.pop) return true;
+  const u = (((t + s.pop.phase) % s.pop.period) + s.pop.period) % s.pop.period;
+  return u < s.pop.open;
+}
+
+function drawSetPiece(ctx: CanvasRenderingContext2D, s: Solid, t: number) {
+  if (s.kind === "hedge") {
+    ctx.fillStyle = "#2f7a45";
+    ctx.beginPath();
+    ctx.ellipse(s.x + s.w * 0.3, s.y + s.h * 0.45, s.w * 0.28, s.h * 0.55, 0, 0, Math.PI * 2);
+    ctx.ellipse(s.x + s.w * 0.62, s.y + s.h * 0.4, s.w * 0.32, s.h * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#3f9a58";
+    ctx.beginPath();
+    ctx.ellipse(s.x + s.w * 0.48, s.y + 16, s.w * 0.22, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#f2c14e";
+    ctx.beginPath();
+    ctx.arc(s.x + 24, s.y + 22, 4, 0, Math.PI * 2);
+    ctx.arc(s.x + s.w - 28, s.y + 18, 4, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+  if (s.kind === "basket") {
+    ctx.fillStyle = "#c9843a";
+    roundRect(ctx, s.x, s.y, s.w, s.h + 8, 8);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(90,50,20,0.35)";
+    ctx.lineWidth = 2;
+    for (let x = s.x + 10; x < s.x + s.w; x += 14) {
+      ctx.beginPath();
+      ctx.moveTo(x, s.y + 4);
+      ctx.lineTo(x, s.y + s.h);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "#8a5a28";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(s.x + 16, s.y + 6);
+    ctx.quadraticCurveTo(s.x + s.w / 2, s.y - 22, s.x + s.w - 16, s.y + 6);
+    ctx.stroke();
+    return;
+  }
+  const on = pieceOn(s, t);
+  ctx.save();
+  ctx.globalAlpha = on ? 0.92 : 0.22;
+  const bob = Math.sin(t * 3 + s.x) * 3;
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.beginPath();
+  ctx.ellipse(s.x + s.w / 2, s.y + s.h / 2 + bob, s.w / 2, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(150,210,230,0.9)";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.beginPath();
+  ctx.arc(s.x + s.w * 0.35, s.y + 4 + bob, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawPlatform(ctx: CanvasRenderingContext2D, s: Solid, t: number) {
+  if (s.kind === "hedge" || s.kind === "basket" || s.kind === "cloud") {
+    drawSetPiece(ctx, s, t);
+    return;
+  }
   ctx.fillStyle = "rgba(70,42,28,0.16)";
   ctx.beginPath();
   ctx.ellipse(s.x + s.w / 2, s.y + s.h + 10, s.w * 0.46, 8, 0, 0, Math.PI * 2);
@@ -366,7 +499,7 @@ function blit(
 }
 
 function enemyFrame(art: Art, e: Enemy, t: number) {
-  if (e.kind === "tomato" || e.kind === "slipper") return null;
+  if (e.kind === "tomato" || e.kind === "slipper" || e.kind === "sock") return null;
   const list = art[e.kind];
   const fps = e.stun > 0 ? 3 : e.kind === "bubble" ? 6 : 8;
   return frameAt(list, e.stun > 0 ? t * 0.5 : t + e.phase, fps);
@@ -397,6 +530,29 @@ function drawFloorTricks(ctx: CanvasRenderingContext2D, sim: Sim) {
       ctx.arc(vent.x - 12, vent.y - 78, 12, 0, Math.PI * 2);
       ctx.arc(vent.x + 10, vent.y - 84, 14, 0, Math.PI * 2);
       ctx.fill();
+    }
+  }
+  for (const gust of sim.gusts) {
+    const on = Math.sin(sim.t * 1.35 + gust.phase) > 0.15;
+    const can = gust.dir < 0 ? gust.x + gust.w : gust.x;
+    ctx.fillStyle = "#6aa2d0";
+    roundRect(ctx, can - 14, gust.y - 36, 28, 22, 6);
+    ctx.fill();
+    ctx.strokeStyle = "#3d6d96";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(can, gust.y - 36);
+    ctx.quadraticCurveTo(can + 16, gust.y - 58, can - 4, gust.y - 62);
+    ctx.stroke();
+    if (!on) continue;
+    ctx.strokeStyle = "rgba(120,190,230,0.85)";
+    const dir = gust.dir < 0 ? -1 : 1;
+    for (let i = 0; i < 4; i++) {
+      const y = gust.y - 18 - i * 6;
+      ctx.beginPath();
+      ctx.moveTo(can + dir * 16, y);
+      ctx.lineTo(can + dir * (50 + i * 36), y - 4);
+      ctx.stroke();
     }
   }
 }
@@ -433,6 +589,18 @@ function drawCritter(ctx: CanvasRenderingContext2D, e: Enemy, t: number) {
     ctx.beginPath();
     ctx.arc(0, 10, 6, 0.2, Math.PI - 0.2);
     ctx.stroke();
+  } else if (e.kind === "sock") {
+    ctx.fillStyle = "#f4f7fb";
+    ctx.beginPath();
+    ctx.ellipse(6, 8, 22, 12, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#7eb8e8";
+    roundRect(ctx, -16, -8, 20, 16, 6);
+    ctx.fill();
+    ctx.fillStyle = "#5c3a32";
+    ctx.beginPath();
+    ctx.arc(14, 4, 2, 0, Math.PI * 2);
+    ctx.fill();
   } else {
     const hop = Math.max(0, -e.vy) / 500;
     ctx.translate(0, -hop * 6);
@@ -570,7 +738,7 @@ export function renderWorld(
 
   for (const e of sim.enemies) {
     if (e.fade < 0) continue;
-    if (e.kind === "tomato" || e.kind === "slipper") {
+    if (e.kind === "tomato" || e.kind === "slipper" || e.kind === "sock") {
       drawCritter(ctx, e, sim.t);
       continue;
     }

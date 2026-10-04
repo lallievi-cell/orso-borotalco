@@ -3,16 +3,24 @@ export const VIEW_H = 540;
 export const PW = 42;
 export const PH = 58;
 
-export type Theme = "salotto" | "cucina" | "corridoio" | "cameretta" | "bagno";
-export type SolidKind = "ground" | "pillow" | "bench" | "mat";
-export type EnemyKind = "sponge" | "roll" | "bubble" | "duck" | "tomato" | "slipper";
+export type Theme = "salotto" | "cucina" | "giardino" | "corridoio" | "lavanderia" | "cameretta" | "terrazzo" | "bagno";
+export type SolidKind = "ground" | "pillow" | "bench" | "mat" | "hedge" | "basket" | "cloud";
+export type EnemyKind = "sponge" | "roll" | "bubble" | "duck" | "tomato" | "slipper" | "sock";
 export type PowerKind = "powder" | "glide" | "speed" | "heart";
 
 export type Rect = { x: number; y: number; w: number; h: number };
 
 export type Mover = { axis: "x" | "y"; origin: number; amp: number; speed: number; phase: number };
 
-export type Solid = Rect & { kind: SolidKind; oneWay: boolean; bounce?: boolean; move?: Mover };
+export type Solid = Rect & {
+  kind: SolidKind;
+  oneWay: boolean;
+  bounce?: boolean;
+  move?: Mover;
+  pop?: { period: number; open: number; phase: number };
+};
+
+export type Gust = { x: number; w: number; y: number; dir: number; phase: number };
 
 export type Coin = Rect & { got: boolean };
 
@@ -96,6 +104,7 @@ export type Level = {
   spawnX: number;
   slips: Slip[];
   steams: Steam[];
+  gusts: Gust[];
   finale: boolean;
 };
 

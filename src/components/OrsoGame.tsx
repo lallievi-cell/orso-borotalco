@@ -43,7 +43,7 @@ type WinInfo = {
 };
 
 const ZERO: Input = { x: 0, jumpHeld: false, jumpPressed: false, down: false };
-const NAMES = ["Il salotto", "La cucina", "Il corridoio", "La cameretta", "Il bagno"];
+const NAMES = ["Il salotto", "La cucina", "Il giardino", "Il corridoio", "La lavanderia", "La cameretta", "Il terrazzo", "Il bagno"];
 
 const emptyHud = (): Hud => ({
   hearts: 5,
@@ -430,7 +430,7 @@ export function OrsoGame() {
               <img src={asset("/sprites/bear/idle-1.png")} alt="" className="floaty h-20 w-auto object-contain sm:h-28 landscape:h-28" />
               <div className="flex w-full min-w-0 flex-1 flex-col items-center gap-2 landscape:items-stretch">
                 <div>
-                  <p className="font-display text-sm text-cocoa/70">Cinque stanze, un bagno</p>
+                  <p className="font-display text-sm text-cocoa/70">Otto stanze, un bagno</p>
                   <h1 className="font-display text-4xl leading-none sm:text-5xl landscape:text-4xl">Orso Borotalco</h1>
                   <p className="mt-1 text-sm leading-snug sm:text-base landscape:hidden">Gli scappa la cacca. Aiutalo ad arrivare in bagno!</p>
                 </div>
@@ -441,7 +441,7 @@ export function OrsoGame() {
                 >
                   Giochiamo
                 </button>
-                <div className="grid w-full grid-cols-3 gap-2 landscape:grid-cols-5">
+                <div className="grid w-full grid-cols-4 gap-2">
                   {NAMES.map((name, i) => {
                     const locked = i > save.unlocked;
                     return (
@@ -657,7 +657,7 @@ export function OrsoGame() {
               <h2 className="font-display text-3xl">Come si gioca</h2>
               <ul className="mt-3 space-y-2 text-base leading-snug">
                 <li>L'orso cammina da solo verso il bagno. Tocca lo schermo per farlo saltare, tieni premuto per un salto più alto. La freccia grande lo fa tornare indietro. Da tastiera: frecce o A e D, spazio per saltare.</li>
-                <li>In cucina l'olio fa scivolare e le pentole soffiano in su. In cameretta i letti sono molle e le pantofole saltellano. I pomodori rotolano.</li>
+                <li>In cucina l'olio fa scivolare e le pentole soffiano. In giardino aspetta l'acqua e salta le siepi. In lavanderia sali nei cesti. Sul terrazzo le bolle scoppiano.</li>
                 <li>Il cuscino a righe è una molla: ci salti sopra e voli. Alcuni tappeti si muovono da soli, salici sopra.</li>
                 <li>Spugna Birba cammina, Rotolino rotola, la Bolla vola, Paperotto l'anatra saltella. Saltagli sulla testa: spariscono e tu rimbalzi.</li>
                 <li>Il barattolo di borotalco fa una nuvoletta: nessuno ti tocca e salti più su.</li>

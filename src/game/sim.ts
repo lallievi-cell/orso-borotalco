@@ -30,6 +30,7 @@ type SimState = {
   goal: Rect;
   slips: Level["slips"];
   steams: Level["steams"];
+  gusts: Level["gusts"];
   finaleLevel: boolean;
   finale: number;
   player: Player;
@@ -80,6 +81,12 @@ function puff(sim: SimState, x: number, y: number, color: string, n: number, spe
   if (sim.particles.length > 120) sim.particles.splice(0, sim.particles.length - 120);
 }
 
+function solidOn(s: { pop?: { period: number; open: number; phase: number } }, t: number) {
+  if (!s.pop) return true;
+  const u = (((t + s.pop.phase) % s.pop.period) + s.pop.period) % s.pop.period;
+  return u < s.pop.open;
+}
+
 function updateMovers(sim: SimState) {
   const p = sim.player;
   for (const s of sim.solids) {
@@ -92,6 +99,7 @@ function updateMovers(sim: SimState) {
     else s.y = m.origin + wave * m.amp;
     const feet = p.y + PH;
     const standing =
+      solidOn(s, sim.t) &&
       p.grounded &&
       feet <= prevY + 8 &&
       feet >= prevY - 12 &&
@@ -187,6 +195,7 @@ function updateEnemies(sim: SimState, dt: number) {
 function resolveX(sim: SimState, x: number) {
   const p = sim.player;
   for (const s of sim.solids) {
+    if (!solidOn(s, sim.t)) continue;
     if (s.oneWay) continue;
     if (!hit(x, p.y, PW, PH, s)) continue;
     const rise = p.y + PH - s.y;
@@ -220,6 +229,7 @@ function resolveY(sim: SimState, y: number, prevBottom: number, prevVy: number) 
   let grounded = false;
   let bounced = false;
   for (const s of sim.solids) {
+    if (!solidOn(s, sim.t)) continue;
     if (!hit(p.x, y, PW, PH, s)) continue;
     if (s.oneWay) {
       if (p.drop > 0 || p.vy < 0 || prevBottom > s.y + 1) continue;
@@ -281,6 +291,7 @@ export function createSim(index: number): SimState {
     goal: level.goal,
     slips: level.slips,
     steams: level.steams,
+    gusts: level.gusts,
     finaleLevel: level.finale,
     finale: 0,
     player,
@@ -383,6 +394,16 @@ export function step(sim: SimState, input: Input, dt: number): StepEvents {
   } else {
     p.vx *= Math.max(0, 1 - 0.7 * dt);
   }
+
+  let gustDir = 0;
+  for (const gust of sim.gusts) {
+    const on = Math.sin(sim.t * 1.35 + gust.phase) > 0.15;
+    if (!on || !wasGrounded) continue;
+    if (mid < gust.x || mid > gust.x + gust.w) continue;
+    if (Math.abs(p.y + PH - gust.y) > 36) continue;
+    gustDir = gust.dir;
+  }
+  if (gustDir !== 0) p.vx = gustDir * 160;
 
   if (p.buffer > 0 && (wasGrounded || p.coyote > 0)) {
     p.vy = p.powder > 0 ? JUMP_POWDER : JUMP;

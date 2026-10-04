@@ -96,14 +96,11 @@ function flight(x: number, y: number, n: number, rise: number, step: number): So
   return out;
 }
 
-export const LEVEL_COUNT = 5;
+export const LEVEL_COUNT = 8;
 
 export function createLevel(index: number): Level {
-  if (index <= 0) return salotto();
-  if (index === 1) return cucina();
-  if (index === 2) return corridoio();
-  if (index === 3) return cameretta();
-  return scale();
+  const makers = [salotto, cucina, giardino, corridoio, lavanderia, cameretta, terrazzo, scale];
+  return (makers[index] ?? scale)();
 }
 
 function salotto(): Level {
@@ -150,6 +147,7 @@ function salotto(): Level {
     spawnX: 70,
     slips: [],
     steams: [],
+    gusts: [],
     finale: false,
   };
 }
@@ -167,11 +165,11 @@ function corridoio(): Level {
   const elevator = lift("mat", 4120, 348, 230, 78, 0.65);
   const finale = plat("bench", 4680, 360, 240);
   return {
-    index: 2,
+    index: 3,
     name: "Il corridoio",
     hint: "Sali sul tappeto che si muove. Poi plana, o salta i cuscini.",
     winTitle: "Ancora un po'!",
-    winText: "Dopo il corridoio c'è la cameretta.",
+    winText: "Dopo il corridoio c'è la lavanderia.",
     theme: "corridoio",
     w,
     h: H,
@@ -204,6 +202,7 @@ function corridoio(): Level {
     spawnX: 64,
     slips: [],
     steams: [],
+    gusts: [],
     finale: false,
   };
 }
@@ -222,7 +221,7 @@ function scale(): Level {
   const topY = landC.y;
   const high: Solid = { x: landC.x + landC.w - 12, y: topY, w: 1680, h: 48, kind: "mat", oneWay: false };
   return {
-    index: 4,
+    index: 7,
     name: "Il bagno",
     hint: "Tre rampe. In cima le piastrelle: la porta è quella giusta.",
     winTitle: "Che sollievo!",
@@ -265,6 +264,7 @@ function scale(): Level {
     spawnX: 64,
     slips: [],
     steams: [],
+    gusts: [],
     finale: true,
   };
 }
@@ -281,7 +281,7 @@ function cucina(): Level {
     name: "La cucina",
     hint: "L'olio fa scivolare. Le pentole soffiano e ti alzano.",
     winTitle: "Via dalla cucina!",
-    winText: "Adesso il corridoio, con i tappeti che camminano.",
+    winText: "Adesso il giardino. Aspetta l'acqua, poi salta le siepi.",
     theme: "cucina",
     w,
     h: H,
@@ -314,6 +314,7 @@ function cucina(): Level {
       { x: 1240, y: GROUND, phase: 0.4 },
       { x: 2920, y: GROUND, phase: 2.1 },
     ],
+    gusts: [],
     finale: false,
   };
 }
@@ -330,11 +331,11 @@ function cameretta(): Level {
   ];
   const dream = lift("pillow", 4100, 330, 200, 70, 0.6);
   return {
-    index: 3,
+    index: 5,
     name: "La cameretta",
     hint: "I letti sono molle. La pantofola saltella: saltale sulla testa.",
     winTitle: "Shhh, si continua!",
-    winText: "Manca solo la scala del bagno grande.",
+    winText: "Sul terrazzo le bolle di sapone fanno da scalini.",
     theme: "cameretta",
     w,
     h: H,
@@ -363,6 +364,161 @@ function cameretta(): Level {
     spawnX: 64,
     slips: [],
     steams: [],
+    gusts: [],
+    finale: false,
+  };
+}
+
+function hedge(x: number, w = 128): Solid {
+  return { x, y: GROUND - 64, w, h: 64, kind: "hedge", oneWay: false };
+}
+
+function bubbleStep(x: number, y: number, phase: number, w = 190): Solid {
+  return { x, y, w, h: 28, kind: "cloud", oneWay: true, pop: { period: 4.4, open: 2.5, phase } };
+}
+
+function basket(x: number, y: number, w: number, amp: number, speed: number, phase: number): Solid {
+  return { x, y, w, h: 34, kind: "basket", oneWay: true, move: { axis: "y", origin: y, amp, speed, phase } };
+}
+
+function giardino(): Level {
+  const w = 4500;
+  const bushes = [hedge(860), hedge(1680, 150), hedge(2620), hedge(3480, 140)];
+  return {
+    index: 2,
+    name: "Il giardino",
+    hint: "Se arriva l'acqua, aspetta. Poi salta la siepe.",
+    winTitle: "Che aria!",
+    winText: "Si torna in casa: il corridoio.",
+    theme: "giardino",
+    w,
+    h: H,
+    groundY: GROUND,
+    solids: [ground(w), ...bushes, spring(2100, 430, 150)],
+    coins: [
+      ...arc(200, GROUND - 74, 700, GROUND - 74, 4, 40),
+      coin(900, GROUND - 140),
+      coin(1720, GROUND - 150),
+      coin(2140, 360),
+      coin(2660, GROUND - 140),
+      coin(3520, GROUND - 150),
+      coin(4100, GROUND - 74),
+      coin(4220, GROUND - 90),
+    ],
+    enemies: [
+      foe("duck", 1280, 1120, 1560, 40, GROUND, 46, 38),
+      foe("sponge", 3000, 2860, 3360, 36, GROUND, 52, 40),
+    ],
+    powers: [power("powder", 2140, 430 - 64)],
+    checkpoints: [{ x: 1960, floor: GROUND, got: false }],
+    goal: { x: 4280, y: GROUND - 210, w: 130, h: 210 },
+    spawnX: 64,
+    slips: [],
+    steams: [],
+    gusts: [
+      { x: 1180, w: 340, y: GROUND, dir: -1, phase: 0.2 },
+      { x: 2200, w: 320, y: GROUND, dir: -1, phase: 2.2 },
+    ],
+    finale: false,
+  };
+}
+
+function lavanderia(): Level {
+  const w = 4700;
+  const baskets = [
+    basket(720, 400, 210, 86, 0.7, 0),
+    basket(1280, 390, 200, 96, 0.85, 1.4),
+    basket(1960, 370, 220, 100, 0.75, 2.6),
+    basket(2920, 400, 200, 90, 0.8, 0.8),
+    basket(3600, 380, 210, 100, 0.7, 2),
+  ];
+  return {
+    index: 4,
+    name: "La lavanderia",
+    hint: "Sali nel cesto quando è basso. Il calzino scivola.",
+    winTitle: "Panni stesi!",
+    winText: "Adesso la cameretta, in punta di piedi.",
+    theme: "lavanderia",
+    w,
+    h: H,
+    groundY: GROUND,
+    solids: [ground(w), ...baskets],
+    coins: [
+      coin(780, 250),
+      coin(1360, 220),
+      coin(2040, 200),
+      coin(3000, 240),
+      coin(3680, 210),
+      ...arc(240, GROUND - 72, 560, GROUND - 72, 3, 36),
+      coin(4300, GROUND - 74),
+      coin(4420, GROUND - 90),
+    ],
+    enemies: [
+      foe("sock", 1100, 980, 1700, 92, GROUND, 48, 28),
+      foe("sock", 2500, 2300, 3200, 100, GROUND, 48, 28),
+      foe("bubble", 4000, 3800, 4500, 28, GROUND, 44, 44, 220),
+    ],
+    powers: [power("glide", 2000, 370 - 70), power("heart", 3640, 380 - 68)],
+    checkpoints: [{ x: 1760, floor: GROUND, got: false }],
+    goal: { x: 4480, y: GROUND - 210, w: 130, h: 210 },
+    spawnX: 64,
+    slips: [],
+    steams: [],
+    gusts: [],
+    finale: false,
+  };
+}
+
+function terrazzo(): Level {
+  const w = 4800;
+  const clouds = [
+    bubbleStep(900, 400, 0),
+    bubbleStep(1160, 340, 1.1),
+    bubbleStep(1420, 280, 2.2),
+    bubbleStep(1680, 340, 0.4),
+    bubbleStep(2500, 390, 1.8),
+    bubbleStep(2760, 320, 0.6),
+    bubbleStep(3020, 260, 2.8),
+    bubbleStep(3280, 320, 1.3),
+    bubbleStep(3900, 380, 0.2),
+    bubbleStep(4160, 310, 1.6),
+  ];
+  return {
+    index: 6,
+    name: "Il terrazzo",
+    hint: "Le bolle reggono solo un momento. Salta sulla prossima.",
+    winTitle: "Che vista!",
+    winText: "L'ultima porta è il bagno.",
+    theme: "terrazzo",
+    w,
+    h: H,
+    groundY: GROUND,
+    solids: [ground(w), ...clouds, plat("bench", 2000, 420, 240, false)],
+    coins: [
+      coin(960, 340),
+      coin(1220, 270),
+      coin(1480, 210),
+      coin(1740, 270),
+      coin(2560, 320),
+      coin(2820, 250),
+      coin(3080, 190),
+      coin(3340, 250),
+      coin(3960, 310),
+      coin(4220, 240),
+      coin(2080, 350),
+      coin(4500, GROUND - 74),
+    ],
+    enemies: [
+      foe("bubble", 2100, 1900, 2500, 32, GROUND, 44, 44, 180),
+      foe("duck", 3600, 3460, 4000, 40, GROUND, 46, 38),
+    ],
+    powers: [power("powder", 2080, 420 - 64)],
+    checkpoints: [{ x: 1880, floor: GROUND, got: false }],
+    goal: { x: 4560, y: GROUND - 210, w: 130, h: 210 },
+    spawnX: 64,
+    slips: [],
+    steams: [],
+    gusts: [],
     finale: false,
   };
 }

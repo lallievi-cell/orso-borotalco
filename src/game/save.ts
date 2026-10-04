@@ -1,7 +1,7 @@
 import { LEVEL_COUNT } from "@/game/levels";
 
 export type SaveData = {
-  v: 2;
+  v: 3;
   unlocked: number;
   best: number[];
   cleared: boolean[];
@@ -11,7 +11,7 @@ const KEY = "orso-borotalco-v1";
 const LAST = LEVEL_COUNT - 1;
 
 export const emptySave = (): SaveData => ({
-  v: 2,
+  v: 3,
   unlocked: 0,
   best: Array.from({ length: LEVEL_COUNT }, () => 0),
   cleared: Array.from({ length: LEVEL_COUNT }, () => false),
@@ -36,21 +36,19 @@ export function loadSave(): SaveData {
       best?: number[];
       cleared?: boolean[];
     };
-    if (p.v === 1) {
-      const best = [0, 0, 0, 0, 0];
-      const cleared = [false, false, false, false, false];
-      best[0] = typeof p.best?.[0] === "number" ? p.best[0] : 0;
-      best[2] = typeof p.best?.[1] === "number" ? p.best[1] : 0;
-      best[4] = typeof p.best?.[2] === "number" ? p.best[2] : 0;
-      cleared[0] = Boolean(p.cleared?.[0]);
-      cleared[2] = Boolean(p.cleared?.[1]);
-      cleared[4] = Boolean(p.cleared?.[2]);
-      let unlocked = 0;
-      if ((p.unlocked ?? 0) >= 1 || cleared[0]) unlocked = 2;
-      if ((p.unlocked ?? 0) >= 2 || cleared[2]) unlocked = LAST;
-      return { v: 2, unlocked, best, cleared };
+    if (p.v === 1 || p.v === 2) {
+      const best = Array.from({ length: LEVEL_COUNT }, () => 0);
+      const cleared = Array.from({ length: LEVEL_COUNT }, () => false);
+      const from5 = p.v === 2 ? [0, 1, 3, 5, 7] : [0, 3, 7];
+      from5.forEach((to, from) => {
+        best[to] = typeof p.best?.[from] === "number" ? p.best[from] : 0;
+        cleared[to] = Boolean(p.cleared?.[from]);
+      });
+      const oldU = Math.max(0, p.unlocked ?? 0);
+      const unlocked = from5[Math.min(from5.length - 1, oldU)] ?? 0;
+      return { v: 3, unlocked, best, cleared };
     }
-    if (p.v !== 2) return emptySave();
+    if (p.v !== 3) return emptySave();
     const data = pad(p.best ?? [], p.cleared ?? []);
     data.unlocked = Math.max(0, Math.min(LAST, p.unlocked ?? 0));
     return data;
