@@ -335,11 +335,12 @@ export function step(sim: SimState, input: Input, dt: number): StepEvents {
   else if (input.x > 0) p.facing = 1;
 
   const max = p.speed > 0 ? FAST : RUN;
+  const cap = input.auto && p.speed <= 0 ? 190 : max;
   const accel = wasGrounded ? 3400 : 2200;
   if (input.x !== 0) {
     p.vx += input.x * accel * dt;
-    if (p.vx > max) p.vx = max;
-    if (p.vx < -max) p.vx = -max;
+    if (p.vx > cap) p.vx = cap;
+    if (p.vx < -cap) p.vx = -cap;
   } else if (wasGrounded) {
     const f = 2200 * dt;
     if (Math.abs(p.vx) <= f) p.vx = 0;

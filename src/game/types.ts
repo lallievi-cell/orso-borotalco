@@ -111,4 +111,5 @@ export type Input = {
   jumpHeld: boolean;
   jumpPressed: boolean;
   down: boolean;
+  auto?: boolean;
 };

@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, House, Pause, Play, RotateCcw, Volume2, VolumeX } from "lucide-react";
+import { ChevronLeft, House, Pause, Play, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { asset, loadArt, type Art } from "@/game/assets";
 import { createAudio, type AudioBus } from "@/game/audio";
@@ -103,6 +103,7 @@ export function OrsoGame() {
     hudAt: 0,
     titleT: 0,
     gentle: false,
+    touch: false,
   });
 
   useEffect(() => {
@@ -116,7 +117,10 @@ export function OrsoGame() {
     setMuted(mute);
     bag.current.gentle = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const coarse = window.matchMedia("(pointer: coarse), (max-width: 900px)");
-    const onCoarse = () => setTouch(coarse.matches);
+    const onCoarse = () => {
+      bag.current.touch = coarse.matches;
+      setTouch(coarse.matches);
+    };
     onCoarse();
     coarse.addEventListener("change", onCoarse);
 
@@ -148,15 +152,19 @@ export function OrsoGame() {
         if (code === "ArrowRight") touchingRight = true;
       }
       let x = 0;
-      if (has("KeyA") || has("ArrowLeft") || touchingLeft) x -= 1;
-      if (has("KeyD") || has("ArrowRight") || touchingRight) x += 1;
+      const left = has("KeyA") || has("ArrowLeft") || touchingLeft;
+      const right = has("KeyD") || has("ArrowRight") || touchingRight;
+      if (left) x -= 1;
+      if (right) x += 1;
+      const auto = bag.current.touch && x === 0;
+      if (auto) x = 1;
       const jumpHeldKeys = has("Space") || has("ArrowUp") || has("KeyW") || bag.current.jumps.size > 0;
       const tapped = bag.current.jumpQueue > 0;
       if (tapped) bag.current.jumpQueue = 0;
       const jumpHeld = jumpHeldKeys || tapped;
       const jumpPressed = tapped || (jumpHeldKeys && !bag.current.wasJump);
       bag.current.wasJump = jumpHeldKeys;
-      return { x, jumpHeld, jumpPressed, down: has("ArrowDown") || has("KeyS") };
+      return { x, jumpHeld, jumpPressed, down: has("ArrowDown") || has("KeyS"), auto };
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -486,24 +494,15 @@ export function OrsoGame() {
         ) : null}
 
         {touch && mode === "play" ? (
-          <div className="pointer-events-none absolute inset-0 z-30 flex items-end justify-between px-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.75rem,env(safe-area-inset-bottom))] landscape:items-center">
+          <div className="pointer-events-none absolute inset-0 z-30 flex items-end justify-start px-[max(0.75rem,env(safe-area-inset-left))] pb-[max(0.75rem,env(safe-area-inset-bottom))] landscape:items-center">
             <button
               type="button"
               data-move
-              aria-label="Sinistra"
+              aria-label="Indietro"
               className="pointer-events-auto grid h-28 w-28 place-items-center rounded-full bg-foam/95 text-cocoa shadow-lg landscape:h-32 landscape:w-32"
               {...hold("ArrowLeft")}
             >
               <ChevronLeft className="h-14 w-14" />
-            </button>
-            <button
-              type="button"
-              data-move
-              aria-label="Destra"
-              className="pointer-events-auto grid h-28 w-28 place-items-center rounded-full bg-foam/95 text-cocoa shadow-lg landscape:h-32 landscape:w-32"
-              {...hold("ArrowRight")}
-            >
-              <ChevronRight className="h-14 w-14" />
             </button>
           </div>
         ) : (
@@ -592,7 +591,7 @@ export function OrsoGame() {
             <div className="max-h-[85vh] w-full max-w-md overflow-auto rounded-card bg-foam px-6 py-5 shadow-lg">
               <h2 className="font-display text-3xl">Come si gioca</h2>
               <ul className="mt-3 space-y-2 text-base leading-snug">
-                <li>Tocca lo schermo dove vuoi per saltare. Tieni premuto per un salto più alto. Le due frecce grandi fanno camminare. Da tastiera: frecce o A e D, spazio per saltare.</li>
+                <li>L'orso cammina da solo verso il bagno. Tocca lo schermo per farlo saltare, tieni premuto per un salto più alto. La freccia grande lo fa tornare indietro. Da tastiera: frecce o A e D, spazio per saltare.</li>
                 <li>Il cuscino a righe è una molla: ci salti sopra e voli. Alcuni tappeti si muovono da soli, salici sopra.</li>
                 <li>Spugna Birba cammina, Rotolino rotola, la Bolla vola, Paperotto l'anatra saltella. Saltagli sulla testa: spariscono e tu rimbalzi.</li>
                 <li>Il barattolo di borotalco fa una nuvoletta: nessuno ti tocca e salti più su.</li>
