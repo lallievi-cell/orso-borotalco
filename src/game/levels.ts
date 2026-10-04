@@ -96,9 +96,13 @@ function flight(x: number, y: number, n: number, rise: number, step: number): So
   return out;
 }
 
+export const LEVEL_COUNT = 5;
+
 export function createLevel(index: number): Level {
   if (index <= 0) return salotto();
-  if (index === 1) return corridoio();
+  if (index === 1) return cucina();
+  if (index === 2) return corridoio();
+  if (index === 3) return cameretta();
   return scale();
 }
 
@@ -122,7 +126,7 @@ function salotto(): Level {
     name: "Il salotto",
     hint: "Prima i cuscini, poi la molla. La porta è in fondo al tappeto.",
     winTitle: "Piccolo sollievo!",
-    winText: "Bagno degli ospiti. Il corridoio, con i tappeti che camminano, viene dopo.",
+    winText: "Bagno degli ospiti. Adesso la cucina, attento all'olio.",
     theme: "salotto",
     w,
     h: H,
@@ -144,6 +148,9 @@ function salotto(): Level {
     checkpoints: [{ x: 2480, floor: GROUND, got: false }],
     goal: { x: 4740, y: GROUND - 210, w: 130, h: 210 },
     spawnX: 70,
+    slips: [],
+    steams: [],
+    finale: false,
   };
 }
 
@@ -160,11 +167,11 @@ function corridoio(): Level {
   const elevator = lift("mat", 4120, 348, 230, 78, 0.65);
   const finale = plat("bench", 4680, 360, 240);
   return {
-    index: 1,
+    index: 2,
     name: "Il corridoio",
     hint: "Sali sul tappeto che si muove. Poi plana, o salta i cuscini.",
     winTitle: "Ancora un po'!",
-    winText: "In fondo al corridoio ci sono le scale del bagno grande.",
+    winText: "Dopo il corridoio c'è la cameretta.",
     theme: "corridoio",
     w,
     h: H,
@@ -195,6 +202,9 @@ function corridoio(): Level {
     ],
     goal: { x: 5340, y: GROUND - 210, w: 140, h: 210 },
     spawnX: 64,
+    slips: [],
+    steams: [],
+    finale: false,
   };
 }
 
@@ -212,11 +222,11 @@ function scale(): Level {
   const topY = landC.y;
   const high: Solid = { x: landC.x + landC.w - 12, y: topY, w: 1680, h: 48, kind: "mat", oneWay: false };
   return {
-    index: 2,
-    name: "Le scale del bagno",
-    hint: "Tre rampe. In cima il pavimento è di piastrelle: il bagno è lì.",
+    index: 4,
+    name: "Il bagno",
+    hint: "Tre rampe. In cima le piastrelle: la porta è quella giusta.",
     winTitle: "Che sollievo!",
-    winText: "Orso Borotalco ce l'ha fatta. Il barattolo può riposare.",
+    winText: "Porta chiusa. Orso Borotalco ce l'ha fatta.",
     theme: "bagno",
     w,
     h: H,
@@ -253,5 +263,106 @@ function scale(): Level {
     ],
     goal: { x: high.x + high.w - 220, y: topY - 210, w: 140, h: 210 },
     spawnX: 64,
+    slips: [],
+    steams: [],
+    finale: true,
+  };
+}
+
+function cucina(): Level {
+  const w = 4600;
+  const shelf = [
+    plat("bench", 1480, 360, 240),
+    plat("pillow", 2500, 372, 200),
+    plat("mat", 3600, 340, 220),
+  ];
+  return {
+    index: 1,
+    name: "La cucina",
+    hint: "L'olio fa scivolare. Le pentole soffiano e ti alzano.",
+    winTitle: "Via dalla cucina!",
+    winText: "Adesso il corridoio, con i tappeti che camminano.",
+    theme: "cucina",
+    w,
+    h: H,
+    groundY: GROUND,
+    solids: [ground(w), ...shelf, spring(3100, 420, 160)],
+    coins: [
+      ...arc(180, GROUND - 78, 620, GROUND - 78, 4, 50),
+      coin(1560, 300),
+      coin(1660, 292),
+      ...arc(2100, GROUND - 90, 2460, GROUND - 90, 3, 30),
+      coin(2580, 310),
+      coin(3680, 278),
+      coin(4200, GROUND - 74),
+      coin(4320, GROUND - 90),
+    ],
+    enemies: [
+      foe("tomato", 980, 860, 1320, 70, GROUND, 48, 40),
+      foe("sponge", 2360, 2200, 2920, 42, GROUND, 52, 40),
+      foe("tomato", 3900, 3720, 4300, 76, GROUND, 48, 40),
+    ],
+    powers: [power("powder", 1560, 360 - 64), power("speed", 3680, 340 - 64)],
+    checkpoints: [{ x: 2000, floor: GROUND, got: false }],
+    goal: { x: 4380, y: GROUND - 210, w: 130, h: 210 },
+    spawnX: 70,
+    slips: [
+      { x: 680, w: 320 },
+      { x: 1880, w: 360 },
+    ],
+    steams: [
+      { x: 1240, y: GROUND, phase: 0.4 },
+      { x: 2920, y: GROUND, phase: 2.1 },
+    ],
+    finale: false,
+  };
+}
+
+function cameretta(): Level {
+  const w = 4800;
+  const bed = spring(520, 418, 220);
+  const bed2 = spring(1040, 390, 200);
+  const blanket = shuttle("mat", 1680, 340, 280, 130, 0.7);
+  const night = [
+    plat("pillow", 2680, 360, 190),
+    plat("bench", 3120, 300, 210),
+    plat("pillow", 3600, 360, 180),
+  ];
+  const dream = lift("pillow", 4100, 330, 200, 70, 0.6);
+  return {
+    index: 3,
+    name: "La cameretta",
+    hint: "I letti sono molle. La pantofola saltella: saltale sulla testa.",
+    winTitle: "Shhh, si continua!",
+    winText: "Manca solo la scala del bagno grande.",
+    theme: "cameretta",
+    w,
+    h: H,
+    groundY: GROUND,
+    solids: [ground(w), bed, bed2, blanket, ...night, dream],
+    coins: [
+      ...arc(200, GROUND - 76, 480, GROUND - 76, 3, 40),
+      ...arc(560, 340, 900, 250, 4, 30),
+      coin(1120, 250),
+      ...arc(1700, 280, 2080, 280, 4, 24),
+      coin(2760, 300),
+      coin(3200, 240),
+      coin(3680, 300),
+      coin(4160, 230),
+      coin(4480, GROUND - 76),
+    ],
+    enemies: [
+      foe("slipper", 860, 760, 1400, 48, GROUND, 52, 36),
+      foe("bubble", 2400, 2200, 3000, 30, GROUND, 44, 44, 210),
+      foe("slipper", 3400, 3280, 3920, 44, GROUND, 52, 36),
+      foe("duck", 4300, 4180, 4620, 40, GROUND, 46, 38),
+    ],
+    powers: [power("glide", 3200, 300 - 64), power("heart", 1140, 390 - 66)],
+    checkpoints: [{ x: 1560, floor: GROUND, got: false }],
+    goal: { x: 4580, y: GROUND - 210, w: 130, h: 210 },
+    spawnX: 64,
+    slips: [],
+    steams: [],
+    finale: false,
   };
 }

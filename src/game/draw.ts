@@ -26,6 +26,28 @@ const THEME = {
     rug: "rgba(196,92,60,0.22)",
     wood: "#c9843a",
   },
+  cucina: {
+    sky0: "#fff4d8",
+    sky1: "#f0c48a",
+    wall: "#f7e2b8",
+    wainscot: "#e7c48a",
+    floor0: "#f0d2a4",
+    floor1: "#c99258",
+    line: "rgba(255,248,230,0.4)",
+    rug: "rgba(90,150,90,0.2)",
+    wood: "#d08a45",
+  },
+  cameretta: {
+    sky0: "#f6e9ff",
+    sky1: "#e7c4ea",
+    wall: "#f8e4f4",
+    wainscot: "#e7c0d8",
+    floor0: "#f0d0c4",
+    floor1: "#d09a8c",
+    line: "rgba(255,250,250,0.4)",
+    rug: "rgba(140,110,200,0.2)",
+    wood: "#c984a8",
+  },
   bagno: {
     sky0: "#eef8f6",
     sky1: "#c5e4dc",
@@ -81,6 +103,36 @@ function drawBackdrop(ctx: CanvasRenderingContext2D, sim: Sim, camX: number, cam
       ctx.fillRect(x, 78, 16, 132);
       ctx.fillRect(x + 94, 78, 16, 132);
     }
+  } else if (sim.theme === "cucina") {
+    for (let i = 0; i < 5; i++) {
+      const x = 40 + i * 200 - (par % 200);
+      ctx.fillStyle = "rgba(90,70,50,0.18)";
+      ctx.fillRect(x + 40, 70, 4, 36);
+      ctx.fillStyle = "rgba(70,70,78,0.35)";
+      ctx.beginPath();
+      ctx.ellipse(x + 42, 118, 22, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(70,70,78,0.45)";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(x + 18, 112, 16, 0.2, Math.PI * 1.2);
+      ctx.stroke();
+    }
+  } else if (sim.theme === "cameretta") {
+    for (let i = 0; i < 6; i++) {
+      const x = 70 + i * 160 - (par % 160);
+      ctx.fillStyle = i % 2 ? "rgba(244,160,186,0.45)" : "rgba(168,196,240,0.45)";
+      ctx.beginPath();
+      ctx.moveTo(x, 150);
+      ctx.lineTo(x + 28, 118);
+      ctx.lineTo(x + 56, 150);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.fillStyle = "rgba(255,244,210,0.85)";
+    ctx.beginPath();
+    ctx.arc(VIEW_W * 0.2, 86, 22, 0, Math.PI * 2);
+    ctx.fill();
   } else if (sim.theme === "corridoio") {
     for (let i = -1; i < 8; i++) {
       const x = i * 220 - (par % 220);
@@ -145,6 +197,33 @@ function drawRoom(ctx: CanvasRenderingContext2D, sim: Sim, camX: number) {
       ctx.fill();
       ctx.fillStyle = "#c4784a";
       roundRect(ctx, x, y - 108, 48, 36, 6);
+      ctx.fill();
+    }
+  } else if (sim.theme === "cucina") {
+    for (let x = 220; x < sim.w; x += 520) {
+      if (x < left - 80 || x > right) continue;
+      ctx.fillStyle = "#f7f1e6";
+      roundRect(ctx, x, y - 168, 70, 56, 8);
+      ctx.fill();
+      ctx.fillStyle = "#e23b3b";
+      ctx.beginPath();
+      ctx.arc(x + 22, y - 140, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#f2c14e";
+      ctx.beginPath();
+      ctx.arc(x + 46, y - 136, 9, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (sim.theme === "cameretta") {
+    for (let x = 300; x < sim.w; x += 700) {
+      if (x < left - 80 || x > right) continue;
+      ctx.fillStyle = "rgba(255,250,244,0.7)";
+      roundRect(ctx, x, y - 210, 90, 70, 8);
+      ctx.fill();
+      ctx.fillStyle = "rgba(186,214,232,0.65)";
+      ctx.fillRect(x + 8, y - 202, 74, 46);
+      ctx.fillStyle = "#e7a0b8";
+      roundRect(ctx, x + 120, y - 96, 54, 28, 8);
       ctx.fill();
     }
   } else if (sim.theme === "corridoio") {
@@ -287,9 +366,100 @@ function blit(
 }
 
 function enemyFrame(art: Art, e: Enemy, t: number) {
+  if (e.kind === "tomato" || e.kind === "slipper") return null;
   const list = art[e.kind];
   const fps = e.stun > 0 ? 3 : e.kind === "bubble" ? 6 : 8;
   return frameAt(list, e.stun > 0 ? t * 0.5 : t + e.phase, fps);
+}
+
+function drawFloorTricks(ctx: CanvasRenderingContext2D, sim: Sim) {
+  for (const s of sim.slips) {
+    ctx.fillStyle = "rgba(232, 196, 64, 0.45)";
+    ctx.beginPath();
+    ctx.ellipse(s.x + s.w / 2, sim.groundY + 6, s.w / 2, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.beginPath();
+    ctx.ellipse(s.x + s.w * 0.35, sim.groundY + 2, 18, 6, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  for (const vent of sim.steams) {
+    const puffOn = Math.sin(sim.t * 2.1 + vent.phase) > 0.45;
+    ctx.fillStyle = "#6b5344";
+    roundRect(ctx, vent.x - 22, vent.y - 28, 44, 30, 8);
+    ctx.fill();
+    ctx.fillStyle = "#3d3a44";
+    ctx.fillRect(vent.x - 26, vent.y - 34, 52, 8);
+    if (puffOn) {
+      ctx.fillStyle = "rgba(255,250,244,0.82)";
+      ctx.beginPath();
+      ctx.arc(vent.x, vent.y - 58, 16, 0, Math.PI * 2);
+      ctx.arc(vent.x - 12, vent.y - 78, 12, 0, Math.PI * 2);
+      ctx.arc(vent.x + 10, vent.y - 84, 14, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+function drawCritter(ctx: CanvasRenderingContext2D, e: Enemy, t: number) {
+  const fading = e.fade > 0;
+  const alpha = fading ? Math.max(0, e.fade / 0.42) : 1;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(e.x + e.w / 2, e.y + e.h / 2 + Math.sin(t * 5 + e.phase) * 1.5);
+  ctx.scale((e.dir > 0 ? 1 : -1) * (fading ? 0.7 : 1), fading ? 0.7 : 1);
+  if (e.kind === "tomato") {
+    ctx.fillStyle = "#e23b3b";
+    ctx.beginPath();
+    ctx.ellipse(0, 4, 24, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#3f8f45";
+    ctx.beginPath();
+    ctx.ellipse(-6, -14, 8, 5, -0.7, 0, Math.PI * 2);
+    ctx.ellipse(6, -15, 7, 4, 0.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fffaf3";
+    ctx.beginPath();
+    ctx.arc(-8, 2, 4, 0, Math.PI * 2);
+    ctx.arc(8, 2, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#3a241c";
+    ctx.beginPath();
+    ctx.arc(-7, 3, 1.8, 0, Math.PI * 2);
+    ctx.arc(9, 3, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#9a2424";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 10, 6, 0.2, Math.PI - 0.2);
+    ctx.stroke();
+  } else {
+    const hop = Math.max(0, -e.vy) / 500;
+    ctx.translate(0, -hop * 6);
+    ctx.fillStyle = "#f2b5c4";
+    ctx.beginPath();
+    ctx.ellipse(8, 6, 28, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#e089a4";
+    ctx.beginPath();
+    ctx.ellipse(-10, 0, 16, 12, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(16, 2, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#5c3a32";
+    ctx.beginPath();
+    ctx.arc(16, 2, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.7)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-4, 4);
+    ctx.quadraticCurveTo(8, 14, 24, 6);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 export function renderWorld(
@@ -307,6 +477,7 @@ export function renderWorld(
   ctx.save();
   ctx.translate(-Math.round(camX + ox), -Math.round(camY + oy));
   drawRoom(ctx, sim, camX);
+  drawFloorTricks(ctx, sim);
 
   for (const s of sim.solids) {
     if (s.kind === "ground") continue;
@@ -382,6 +553,15 @@ export function renderWorld(
     const dh = 200;
     const dw = dh * (art.door.width / art.door.height);
     ctx.drawImage(art.door, sim.goal.x + sim.goal.w / 2 - dw / 2, sim.goal.y + sim.goal.h - dh, dw, dh);
+    if (sim.finale > 0 && sim.finale < 1.4) {
+      const k = Math.min(1, (1.4 - sim.finale) / 0.7);
+      ctx.fillStyle = sim.theme === "bagno" ? "#d7f3ee" : "#f6efe4";
+      ctx.fillRect(dx - 62, dy - 188, 124 * k, 188);
+      ctx.fillStyle = "#c9843a";
+      ctx.beginPath();
+      ctx.arc(dx - 62 + 124 * k - 14, dy - 96, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
   } else {
     ctx.fillStyle = "#fffaf3";
     roundRect(ctx, sim.goal.x, sim.goal.y, sim.goal.w, sim.goal.h, 16);
@@ -390,6 +570,10 @@ export function renderWorld(
 
   for (const e of sim.enemies) {
     if (e.fade < 0) continue;
+    if (e.kind === "tomato" || e.kind === "slipper") {
+      drawCritter(ctx, e, sim.t);
+      continue;
+    }
     const img = enemyFrame(art, e, sim.t);
     if (!img) continue;
     const fading = e.fade > 0;
@@ -410,7 +594,8 @@ export function renderWorld(
   }
 
   const p = sim.player;
-  if (p.grounded) {
+  const inside = sim.finale > 0 && sim.finale < 1.05;
+  if (!inside && p.grounded) {
     ctx.fillStyle = "rgba(90, 56, 40, 0.16)";
     ctx.beginPath();
     ctx.ellipse(p.x + PW / 2, p.y + PH, 20, 6, 0, 0, Math.PI * 2);
@@ -430,7 +615,7 @@ export function renderWorld(
     const fps = p.speed > 0 ? 13 : 10;
     sprite = frameAt(art.run, p.anim, fps);
   }
-  if (sprite) {
+  if (!inside && sprite) {
     let sx = 1;
     let sy = 1;
     if (p.land > 0) {
@@ -447,14 +632,14 @@ export function renderWorld(
     ctx.restore();
   }
 
-  if (p.glide > 0 && art.ring) {
+  if (!inside && p.glide > 0 && art.ring) {
     ctx.save();
     ctx.globalAlpha = 0.9;
     ctx.drawImage(art.ring, p.x + PW / 2 - 18, p.y - 28, 36, 36);
     ctx.restore();
   }
 
-  if (sim.levelIndex === 0 && sim.t < 8 && p.x < 420) {
+  if (!inside && sim.levelIndex === 0 && sim.t < 8 && p.x < 420) {
     const ax = p.x + 110;
     const ay = p.y + 8 + Math.sin(sim.t * 6) * 6;
     ctx.fillStyle = "#f3a073";

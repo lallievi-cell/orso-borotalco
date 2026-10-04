@@ -3,9 +3,9 @@ export const VIEW_H = 540;
 export const PW = 42;
 export const PH = 58;
 
-export type Theme = "salotto" | "corridoio" | "bagno";
+export type Theme = "salotto" | "cucina" | "corridoio" | "cameretta" | "bagno";
 export type SolidKind = "ground" | "pillow" | "bench" | "mat";
-export type EnemyKind = "sponge" | "roll" | "bubble" | "duck";
+export type EnemyKind = "sponge" | "roll" | "bubble" | "duck" | "tomato" | "slipper";
 export type PowerKind = "powder" | "glide" | "speed" | "heart";
 
 export type Rect = { x: number; y: number; w: number; h: number };
@@ -74,6 +74,9 @@ export type Particle = {
   color: string;
 };
 
+export type Slip = { x: number; w: number };
+export type Steam = { x: number; y: number; phase: number };
+
 export type Level = {
   index: number;
   name: string;
@@ -91,6 +94,9 @@ export type Level = {
   checkpoints: Checkpoint[];
   goal: Rect;
   spawnX: number;
+  slips: Slip[];
+  steams: Steam[];
+  finale: boolean;
 };
 
 export type StepEvents = {

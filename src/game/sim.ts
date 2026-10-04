@@ -28,6 +28,10 @@ type SimState = {
   powers: Level["powers"];
   checkpoints: Level["checkpoints"];
   goal: Rect;
+  slips: Level["slips"];
+  steams: Level["steams"];
+  finaleLevel: boolean;
+  finale: number;
   player: Player;
   particles: Particle[];
   t: number;
@@ -152,7 +156,7 @@ function updateEnemies(sim: SimState, dt: number) {
       e.y = e.floor - e.h;
       continue;
     }
-    if (e.kind === "duck") {
+    if (e.kind === "duck" || e.kind === "slipper") {
       e.hop += dt;
       e.vy = Math.min(720, e.vy + 2400 * dt);
       e.y += e.vy * dt;
@@ -160,8 +164,8 @@ function updateEnemies(sim: SimState, dt: number) {
       if (e.y >= gy) {
         e.y = gy;
         e.vy = 0;
-        if (e.hop > 1.55) {
-          e.vy = -350;
+        if (e.hop > (e.kind === "slipper" ? 1.25 : 1.55)) {
+          e.vy = e.kind === "slipper" ? -460 : -350;
           e.hop = 0;
         }
       }
@@ -275,6 +279,10 @@ export function createSim(index: number): SimState {
     powers: level.powers,
     checkpoints: level.checkpoints,
     goal: level.goal,
+    slips: level.slips,
+    steams: level.steams,
+    finaleLevel: level.finale,
+    finale: 0,
     player,
     particles: [],
     t: 0,
@@ -316,6 +324,27 @@ export function step(sim: SimState, input: Input, dt: number): StepEvents {
     return events;
   }
 
+  if (sim.finale > 0) {
+    sim.finale -= dt;
+    const door = sim.goal.x + 24;
+    p.facing = 1;
+    p.grounded = true;
+    p.vy = 0;
+    p.vx = 90;
+    if (p.x < door) p.x = Math.min(door, p.x + 90 * dt);
+    if (sim.finale < 0.85 && sim.finale + dt >= 0.85) {
+      puff(sim, sim.goal.x + 60, sim.goal.y + 40, "#fff6ea", 14, 90);
+      puff(sim, sim.goal.x + 70, sim.goal.y + 20, "#e8b63a", 8, 120);
+    }
+    if (sim.finale <= 0) {
+      sim.finale = 0;
+      sim.won = true;
+      events.win = true;
+    }
+    updateParticles(sim, dt);
+    return events;
+  }
+
   p.invuln = Math.max(0, p.invuln - dt);
   p.powder = Math.max(0, p.powder - dt);
   p.glide = Math.max(0, p.glide - dt);
@@ -334,13 +363,19 @@ export function step(sim: SimState, input: Input, dt: number): StepEvents {
   if (input.x < 0) p.facing = -1;
   else if (input.x > 0) p.facing = 1;
 
-  const max = p.speed > 0 ? FAST : RUN;
-  const cap = input.auto && p.speed <= 0 ? 190 : max;
-  const accel = wasGrounded ? 3400 : 2200;
+  const mid = p.x + PW / 2;
+  const sliding =
+    wasGrounded &&
+    Math.abs(p.y + PH - sim.groundY) < 28 &&
+    sim.slips.some((s) => mid > s.x && mid < s.x + s.w);
+  const cap = input.auto && p.speed <= 0 ? 190 : p.speed > 0 ? FAST : RUN;
+  const accel = sliding ? 360 : wasGrounded ? 3400 : 2200;
   if (input.x !== 0) {
     p.vx += input.x * accel * dt;
     if (p.vx > cap) p.vx = cap;
     if (p.vx < -cap) p.vx = -cap;
+  } else if (sliding) {
+    p.vx *= Math.max(0, 1 - 0.35 * dt);
   } else if (wasGrounded) {
     const f = 2200 * dt;
     if (Math.abs(p.vx) <= f) p.vx = 0;
@@ -454,6 +489,19 @@ export function step(sim: SimState, input: Input, dt: number): StepEvents {
     puff(sim, item.x + 20, item.y + 20, "#ffffff", 10, 120);
   }
 
+  for (const vent of sim.steams) {
+    const puffOn = Math.sin(sim.t * 2.1 + vent.phase) > 0.45;
+    if (!puffOn) continue;
+    const over = p.x + PW > vent.x - 28 && p.x < vent.x + 36 && p.y + PH > vent.y - 70 && p.y + PH < vent.y + 16;
+    if (over && p.vy > -180) {
+      p.vy = -700;
+      p.grounded = false;
+      p.jumpCut = false;
+      events.jump = true;
+      puff(sim, vent.x, vent.y - 20, "#fffaf3", 4, 80);
+    }
+  }
+
   for (const cp of sim.checkpoints) {
     if (cp.got) continue;
     if (p.x + PW > cp.x && p.y + PH > cp.floor - 80 && p.y < cp.floor) {
@@ -474,11 +522,16 @@ export function step(sim: SimState, input: Input, dt: number): StepEvents {
     events.fall = true;
   }
 
-  if (!sim.won && hit(p.x, p.y, PW, PH, sim.goal, 4)) {
-    sim.won = true;
-    events.win = true;
-    puff(sim, sim.goal.x + 50, sim.goal.y + 40, "#e8b63a", 16, 160);
-    puff(sim, sim.goal.x + 60, sim.goal.y + 80, "#ffffff", 12, 140);
+  if (!sim.won && sim.finale <= 0 && hit(p.x, p.y, PW, PH, sim.goal, 4)) {
+    if (sim.finaleLevel) {
+      sim.finale = 2.4;
+      p.vx = 90;
+    } else {
+      sim.won = true;
+      events.win = true;
+      puff(sim, sim.goal.x + 50, sim.goal.y + 40, "#e8b63a", 16, 160);
+      puff(sim, sim.goal.x + 60, sim.goal.y + 80, "#ffffff", 12, 140);
+    }
   }
 
   updateParticles(sim, dt);

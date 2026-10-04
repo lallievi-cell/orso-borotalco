@@ -43,7 +43,7 @@ type WinInfo = {
 };
 
 const ZERO: Input = { x: 0, jumpHeld: false, jumpPressed: false, down: false };
-const NAMES = ["Il salotto", "Il corridoio", "Le scale"];
+const NAMES = ["Il salotto", "La cucina", "Il corridoio", "La cameretta", "Il bagno"];
 
 const emptyHud = (): Hud => ({
   hearts: 5,
@@ -82,6 +82,8 @@ export function OrsoGame() {
   const [mode, setMode] = useState<Mode>("title");
   const [hud, setHud] = useState<Hud>(emptyHud);
   const [win, setWin] = useState<WinInfo | null>(null);
+  const [story, setStory] = useState(false);
+  const [panel, setPanel] = useState(0);
   const [help, setHelp] = useState(false);
   const [save, setSave] = useState<SaveData>(emptySave);
   const [muted, setMuted] = useState(false);
@@ -247,7 +249,7 @@ export function OrsoGame() {
             };
             next.best[sim.levelIndex] = Math.max(next.best[sim.levelIndex] ?? 0, sim.player.stars);
             next.cleared[sim.levelIndex] = true;
-            next.unlocked = Math.max(next.unlocked, Math.min(2, sim.levelIndex + 1));
+            next.unlocked = Math.max(next.unlocked, Math.min(NAMES.length - 1, sim.levelIndex + 1));
             b.save = next;
             writeSave(next);
             setSave(next);
@@ -321,6 +323,34 @@ export function OrsoGame() {
       delete window.__controlsTest;
     };
   }, []);
+
+  useEffect(() => {
+    if (!story) return;
+    const id = window.setTimeout(() => {
+      if (panel >= 3) {
+        setStory(false);
+        begin(0);
+      } else {
+        setPanel(panel + 1);
+      }
+    }, 2600);
+    return () => window.clearTimeout(id);
+  }, [story, panel]);
+
+  function openStory() {
+    setPanel(0);
+    setStory(true);
+    bag.current.audio?.unlock();
+  }
+
+  function advanceStory() {
+    if (panel >= 3) {
+      setStory(false);
+      begin(0);
+      return;
+    }
+    setPanel(panel + 1);
+  }
 
   function begin(index: number) {
     const sim = createSim(index);
@@ -397,21 +427,21 @@ export function OrsoGame() {
         {mode === "title" ? (
           <div className="pointer-events-auto flex h-full items-center justify-center overflow-y-auto px-3 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <div className="flex max-h-full w-full max-w-5xl flex-col items-center gap-2 rounded-card bg-foam/95 px-4 py-3 text-center shadow-lg landscape:flex-row landscape:items-center landscape:gap-5 landscape:px-6 landscape:py-4 landscape:text-left">
-              <img src={asset("/sprites/bear/idle-1.png")} alt="" className="floaty h-20 w-auto sm:h-28 landscape:h-36" />
+              <img src={asset("/sprites/bear/idle-1.png")} alt="" className="floaty h-20 w-auto object-contain sm:h-28 landscape:h-28" />
               <div className="flex w-full min-w-0 flex-1 flex-col items-center gap-2 landscape:items-stretch">
                 <div>
-                  <p className="font-display text-sm text-cocoa/70">Tre stanze, un bagno</p>
-                  <h1 className="font-display text-4xl leading-none sm:text-5xl landscape:text-5xl">Orso Borotalco</h1>
-                  <p className="mt-1 text-sm leading-snug sm:text-base">Gli scappa la cacca. Aiutalo ad arrivare in bagno!</p>
+                  <p className="font-display text-sm text-cocoa/70">Cinque stanze, un bagno</p>
+                  <h1 className="font-display text-4xl leading-none sm:text-5xl landscape:text-4xl">Orso Borotalco</h1>
+                  <p className="mt-1 text-sm leading-snug sm:text-base landscape:hidden">Gli scappa la cacca. Aiutalo ad arrivare in bagno!</p>
                 </div>
                 <button
                   type="button"
                   className="min-h-14 w-full rounded-full bg-peach px-6 font-display text-2xl text-cocoa"
-                  onClick={() => begin(0)}
+                  onClick={openStory}
                 >
                   Giochiamo
                 </button>
-                <div className="grid w-full grid-cols-3 gap-2">
+                <div className="grid w-full grid-cols-3 gap-2 landscape:grid-cols-5">
                   {NAMES.map((name, i) => {
                     const locked = i > save.unlocked;
                     return (
@@ -420,7 +450,7 @@ export function OrsoGame() {
                         type="button"
                         disabled={locked}
                         onClick={() => begin(i)}
-                        className="min-h-12 rounded-2xl bg-cream px-2 py-2 text-sm disabled:opacity-40"
+                        className="min-h-12 rounded-2xl bg-cream px-1 py-1 text-sm disabled:opacity-40 landscape:min-h-10"
                       >
                         <span className="block font-display text-base leading-tight">{name}</span>
                         <span className="text-cocoa/70">{locked ? "chiuso" : save.best[i] ? `${save.best[i]} stelline` : "aperto"}</span>
@@ -431,6 +461,9 @@ export function OrsoGame() {
                 <div className="flex gap-2">
                   <button type="button" className="min-h-11 rounded-full bg-mint px-4 text-cocoa" onClick={() => setHelp(true)}>
                     Come si gioca
+                  </button>
+                  <button type="button" className="min-h-11 rounded-full bg-cream px-4 text-cocoa" onClick={openStory}>
+                    Storia
                   </button>
                   <button type="button" className="grid h-11 w-11 place-items-center rounded-full bg-cream" onClick={toggleMute} aria-label={muted ? "Attiva il suono" : "Silenzia"}>
                     {muted ? <VolumeX /> : <Volume2 />}
@@ -557,7 +590,7 @@ export function OrsoGame() {
               <p className="mt-3 font-display text-2xl text-gold">Stelline {win.stars}</p>
               {win.left === 0 ? <p className="text-sm">Hai preso tutte le stelline del livello!</p> : <p className="text-sm text-cocoa/70">Ne sono rimaste {win.left} lungo la strada.</p>}
               <div className="mt-4 flex flex-col gap-2">
-                {win.index < 2 ? (
+                {win.index < NAMES.length - 1 ? (
                   <button type="button" className="min-h-12 rounded-full bg-peach font-display text-xl" onClick={() => begin(win.index + 1)}>
                     Avanti
                   </button>
@@ -586,12 +619,45 @@ export function OrsoGame() {
           </div>
         ) : null}
 
+        {story ? (
+          <button
+            type="button"
+            className="pointer-events-auto absolute inset-0 z-50 flex items-center justify-center bg-cocoa/35 p-3"
+            onClick={advanceStory}
+          >
+            <div className="flex w-full max-w-3xl flex-col items-center gap-3 rounded-card bg-foam px-4 py-4 shadow-lg landscape:flex-row landscape:gap-6 landscape:px-6">
+              <div className="relative h-44 w-full max-w-md landscape:h-52">
+                <img
+                  src={panel === 3 ? asset("/sprites/bear/run-1.png") : asset("/sprites/bear/idle-1.png")}
+                  alt=""
+                  className={`absolute bottom-0 h-36 w-auto transition-all duration-500 ${panel === 0 ? "left-1/2 -translate-x-1/2" : "left-2"} ${panel === 3 ? "left-6" : ""}`}
+                />
+                {panel === 0 ? <span className="absolute bottom-8 left-1/2 h-10 w-10 -translate-x-1/2 rounded-full bg-peach/75 animate-pulse" /> : null}
+                {panel === 1 ? <img src={asset("/sprites/powder.png")} alt="" className="absolute bottom-8 right-6 h-20 w-auto" /> : null}
+                {panel >= 2 ? (
+                  <img
+                    src={asset("/sprites/door.png")}
+                    alt=""
+                    className={`absolute bottom-0 right-2 w-auto transition-all duration-500 ${panel === 3 ? "h-40" : "h-16 opacity-80"}`}
+                  />
+                ) : null}
+              </div>
+              <div className="flex gap-2" aria-hidden>
+                {[0, 1, 2, 3].map((i) => (
+                  <span key={i} className={`h-3 w-3 rounded-full ${i === panel ? "bg-peach" : "bg-cream"}`} />
+                ))}
+              </div>
+            </div>
+          </button>
+        ) : null}
+
         {help ? (
           <div className="pointer-events-auto absolute inset-0 z-40 grid place-items-center overflow-y-auto bg-cocoa/40 p-4">
             <div className="max-h-[85vh] w-full max-w-md overflow-auto rounded-card bg-foam px-6 py-5 shadow-lg">
               <h2 className="font-display text-3xl">Come si gioca</h2>
               <ul className="mt-3 space-y-2 text-base leading-snug">
                 <li>L'orso cammina da solo verso il bagno. Tocca lo schermo per farlo saltare, tieni premuto per un salto più alto. La freccia grande lo fa tornare indietro. Da tastiera: frecce o A e D, spazio per saltare.</li>
+                <li>In cucina l'olio fa scivolare e le pentole soffiano in su. In cameretta i letti sono molle e le pantofole saltellano. I pomodori rotolano.</li>
                 <li>Il cuscino a righe è una molla: ci salti sopra e voli. Alcuni tappeti si muovono da soli, salici sopra.</li>
                 <li>Spugna Birba cammina, Rotolino rotola, la Bolla vola, Paperotto l'anatra saltella. Saltagli sulla testa: spariscono e tu rimbalzi.</li>
                 <li>Il barattolo di borotalco fa una nuvoletta: nessuno ti tocca e salti più su.</li>
