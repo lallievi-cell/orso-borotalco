@@ -93,6 +93,8 @@ export function OrsoGame() {
     keys: new Set<string>(),
     injected: new Set<string>(),
     pointers: new Map<number, string>(),
+    jumps: new Set<number>(),
+    jumpQueue: 0,
     jumpDownAt: 0,
     wasJump: false,
     audio: null as AudioBus | null,
@@ -139,12 +141,21 @@ export function OrsoGame() {
 
     const readInput = (): Input => {
       const has = (code: string) => bag.current.keys.has(code) || bag.current.injected.has(code);
+      let touchingLeft = false;
+      let touchingRight = false;
+      for (const code of bag.current.pointers.values()) {
+        if (code === "ArrowLeft") touchingLeft = true;
+        if (code === "ArrowRight") touchingRight = true;
+      }
       let x = 0;
-      if (has("KeyA") || has("ArrowLeft")) x -= 1;
-      if (has("KeyD") || has("ArrowRight")) x += 1;
-      const jumpHeld = has("Space") || has("ArrowUp") || has("KeyW");
-      const jumpPressed = jumpHeld && !bag.current.wasJump;
-      bag.current.wasJump = jumpHeld;
+      if (has("KeyA") || has("ArrowLeft") || touchingLeft) x -= 1;
+      if (has("KeyD") || has("ArrowRight") || touchingRight) x += 1;
+      const jumpHeldKeys = has("Space") || has("ArrowUp") || has("KeyW") || bag.current.jumps.size > 0;
+      const tapped = bag.current.jumpQueue > 0;
+      if (tapped) bag.current.jumpQueue = 0;
+      const jumpHeld = jumpHeldKeys || tapped;
+      const jumpPressed = tapped || (jumpHeldKeys && !bag.current.wasJump);
+      bag.current.wasJump = jumpHeldKeys;
       return { x, jumpHeld, jumpPressed, down: has("ArrowDown") || has("KeyS") };
     };
 
@@ -172,25 +183,27 @@ export function OrsoGame() {
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
-      const move = e.code === "ArrowLeft" || e.code === "ArrowRight" || e.code === "KeyA" || e.code === "KeyD";
-      // Some keyboards drop the direction key the instant jump is pressed. Ignore that fake release.
-      if (move && performance.now() - bag.current.jumpDownAt < 120) return;
       bag.current.keys.delete(e.code);
     };
-    const onBlur = () => bag.current.keys.clear();
+    const onBlur = () => {
+      bag.current.keys.clear();
+      bag.current.pointers.clear();
+      bag.current.jumps.clear();
+      bag.current.jumpQueue = 0;
+    };
     const onUnlock = () => audio.unlock();
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", onBlur);
     window.addEventListener("pointerdown", onUnlock);
-    const onPointerUp = (e: PointerEvent) => {
-      const code = bag.current.pointers.get(e.pointerId);
-      if (!code) return;
-      bag.current.pointers.delete(e.pointerId);
-      for (const held of bag.current.pointers.values()) if (held === code) return;
-      bag.current.keys.delete(code);
+    const releaseTouch = (id: number) => {
+      bag.current.pointers.delete(id);
+      if (!bag.current.jumps.delete(id)) return;
     };
+    const onPointerUp = (e: PointerEvent) => releaseTouch(e.pointerId);
+    const onPointerCancel = (e: PointerEvent) => releaseTouch(e.pointerId);
     window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerCancel);
 
     void loadArt().then((art) => {
       if (!dead) bag.current.art = art;
@@ -265,10 +278,11 @@ export function OrsoGame() {
       };
 
       const scale = Math.min(canvas.width / VIEW_W, canvas.height / VIEW_H);
+      const wide = canvas.width / canvas.height > VIEW_W / VIEW_H;
       const ox = (canvas.width - VIEW_W * scale) / 2;
-      const oy = (canvas.height - VIEW_H * scale) * 0.16;
+      const oy = wide ? (canvas.height - VIEW_H * scale) / 2 : (canvas.height - VIEW_H * scale) * 0.12;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = "#fff4e4";
+      ctx.fillStyle = wide ? "#f3c7ae" : "#fff4e4";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.setTransform(scale, 0, 0, scale, ox, oy);
       ctx.imageSmoothingEnabled = true;
@@ -294,6 +308,7 @@ export function OrsoGame() {
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("pointerdown", onUnlock);
       window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerCancel);
       coarse.removeEventListener("change", onCoarse);
       delete window.__controlsTest;
     };
@@ -306,6 +321,9 @@ export function OrsoGame() {
     bag.current.cam = { x: Math.max(0, sim.player.x - 160), y: 0 };
     bag.current.wasJump = false;
     bag.current.keys.clear();
+    bag.current.pointers.clear();
+    bag.current.jumps.clear();
+    bag.current.jumpQueue = 0;
     bag.current.mode = "play";
     bag.current.hudAt = 0;
     setHud(toHud(sim));
@@ -317,26 +335,41 @@ export function OrsoGame() {
   }
 
   function releasePointer(id: number) {
-    const code = bag.current.pointers.get(id);
-    if (!code) return;
     bag.current.pointers.delete(id);
-    for (const held of bag.current.pointers.values()) if (held === code) return;
-    bag.current.keys.delete(code);
   }
 
   function hold(code: string) {
     return {
       onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
         e.preventDefault();
-        e.currentTarget.setPointerCapture(e.pointerId);
+        e.stopPropagation();
+        bag.current.jumps.delete(e.pointerId);
         bag.current.pointers.set(e.pointerId, code);
-        bag.current.keys.add(code);
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId);
+        } catch {
+          /* il dito è già finito */
+        }
       },
       onPointerUp: (e: React.PointerEvent<HTMLButtonElement>) => releasePointer(e.pointerId),
-      onPointerCancel: () => {
-        // Phones cancel the first finger when Salta is pressed. Keep holding.
-      },
+      onPointerCancel: (e: React.PointerEvent<HTMLButtonElement>) => releasePointer(e.pointerId),
     };
+  }
+
+  function jumpDown(e: React.PointerEvent<HTMLDivElement>) {
+    if ((e.target as HTMLElement).closest("[data-move]")) return;
+    e.preventDefault();
+    bag.current.jumps.add(e.pointerId);
+    bag.current.jumpQueue += 1;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* il dito è già finito */
+    }
+  }
+
+  function jumpUp(e: React.PointerEvent<HTMLDivElement>) {
+    bag.current.jumps.delete(e.pointerId);
   }
 
   function toggleMute() {
@@ -354,56 +387,55 @@ export function OrsoGame() {
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" aria-hidden />
       <div className="pointer-events-none relative z-10 flex h-full flex-col">
         {mode === "title" ? (
-          <div className="pointer-events-auto mt-auto flex w-full justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            <div className="flex w-full max-w-xl flex-col items-center gap-3 rounded-card bg-foam/95 px-5 py-5 text-center shadow-lg">
-              <p className="rounded-full bg-peach/40 px-3 py-1 font-display text-sm">Tre stanze, un bagno</p>
-              <img src={asset("/sprites/bear/idle-1.png")} alt="" className="floaty h-28 w-auto sm:h-40" />
-              <div>
-                <h1 className="font-display text-4xl leading-none sm:text-6xl">Orso Borotalco</h1>
-                <p className="mt-2 text-base leading-snug sm:text-lg">
-                  Gli scappa la cacca. Aiutalo ad arrivare in bagno!
-                </p>
-                <p className="mt-1 text-sm text-cocoa/70">Cuscini molla, tappeti che camminano e scale da salire. Se sbaglia, fa un riposino.</p>
-              </div>
-              <button
-                type="button"
-                className="min-h-14 w-full max-w-xs rounded-full bg-peach px-6 font-display text-2xl text-cocoa"
-                onClick={() => begin(0)}
-              >
-                Giochiamo
-              </button>
-              <div className="grid w-full grid-cols-3 gap-2">
-                {NAMES.map((name, i) => {
-                  const locked = i > save.unlocked;
-                  return (
-                    <button
-                      key={name}
-                      type="button"
-                      disabled={locked}
-                      onClick={() => begin(i)}
-                      className="min-h-12 rounded-2xl bg-cream px-2 py-2 text-sm disabled:opacity-40"
-                    >
-                      <span className="block font-display text-base leading-tight">{name}</span>
-                      <span className="text-cocoa/70">{locked ? "chiuso" : save.best[i] ? `${save.best[i]} stelline` : "aperto"}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="flex gap-2">
-                <button type="button" className="min-h-11 rounded-full bg-mint px-4 text-cocoa" onClick={() => setHelp(true)}>
-                  Come si gioca
+          <div className="pointer-events-auto flex h-full items-center justify-center overflow-y-auto px-3 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="flex max-h-full w-full max-w-5xl flex-col items-center gap-2 rounded-card bg-foam/95 px-4 py-3 text-center shadow-lg landscape:flex-row landscape:items-center landscape:gap-5 landscape:px-6 landscape:py-4 landscape:text-left">
+              <img src={asset("/sprites/bear/idle-1.png")} alt="" className="floaty h-20 w-auto sm:h-28 landscape:h-36" />
+              <div className="flex w-full min-w-0 flex-1 flex-col items-center gap-2 landscape:items-stretch">
+                <div>
+                  <p className="font-display text-sm text-cocoa/70">Tre stanze, un bagno</p>
+                  <h1 className="font-display text-4xl leading-none sm:text-5xl landscape:text-5xl">Orso Borotalco</h1>
+                  <p className="mt-1 text-sm leading-snug sm:text-base">Gli scappa la cacca. Aiutalo ad arrivare in bagno!</p>
+                </div>
+                <button
+                  type="button"
+                  className="min-h-14 w-full rounded-full bg-peach px-6 font-display text-2xl text-cocoa"
+                  onClick={() => begin(0)}
+                >
+                  Giochiamo
                 </button>
-                <button type="button" className="grid h-11 w-11 place-items-center rounded-full bg-cream" onClick={toggleMute} aria-label={muted ? "Attiva il suono" : "Silenzia"}>
-                  {muted ? <VolumeX /> : <Volume2 />}
-                </button>
+                <div className="grid w-full grid-cols-3 gap-2">
+                  {NAMES.map((name, i) => {
+                    const locked = i > save.unlocked;
+                    return (
+                      <button
+                        key={name}
+                        type="button"
+                        disabled={locked}
+                        onClick={() => begin(i)}
+                        className="min-h-12 rounded-2xl bg-cream px-2 py-2 text-sm disabled:opacity-40"
+                      >
+                        <span className="block font-display text-base leading-tight">{name}</span>
+                        <span className="text-cocoa/70">{locked ? "chiuso" : save.best[i] ? `${save.best[i]} stelline` : "aperto"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" className="min-h-11 rounded-full bg-mint px-4 text-cocoa" onClick={() => setHelp(true)}>
+                    Come si gioca
+                  </button>
+                  <button type="button" className="grid h-11 w-11 place-items-center rounded-full bg-cream" onClick={toggleMute} aria-label={muted ? "Attiva il suono" : "Silenzia"}>
+                    {muted ? <VolumeX /> : <Volume2 />}
+                  </button>
+                </div>
+                {save.cleared.every(Boolean) ? <p className="font-display text-mint">Tutti i bagni: che campione!</p> : null}
               </div>
-              {save.cleared.every(Boolean) ? <p className="font-display text-mint">Tutti i bagni: che campione!</p> : null}
             </div>
           </div>
         ) : null}
 
         {playing ? (
-          <div className="pointer-events-none flex flex-col gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+          <div className="pointer-events-none relative z-30 flex flex-col gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
             <div className="flex items-center justify-between gap-2">
               <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-foam/95 px-2.5 py-1.5 shadow">
                 <div className="flex">
@@ -445,33 +477,41 @@ export function OrsoGame() {
         ) : null}
 
         {touch && mode === "play" ? (
-          <div className="pointer-events-none mt-auto flex items-end justify-between px-4 pb-[max(1rem,env(safe-area-inset-bottom))] [touch-action:none]">
-            <div className="pointer-events-auto flex gap-3 [touch-action:none]">
-              <button type="button" aria-label="Sinistra" className="grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-foam/95 text-cocoa shadow-lg" {...hold("ArrowLeft")}>
-                <ChevronLeft className="h-9 w-9" />
-              </button>
-              <button type="button" aria-label="Destra" className="grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-foam/95 text-cocoa shadow-lg" {...hold("ArrowRight")}>
-                <ChevronRight className="h-9 w-9" />
-              </button>
-            </div>
-            <div className="pointer-events-auto flex items-end gap-2 [touch-action:none]">
-              <button type="button" aria-label="Scendi" className="grid h-14 min-w-14 place-items-center rounded-full bg-cream/95 px-3 font-display text-sm text-cocoa shadow-lg" {...hold("ArrowDown")}>
-                Giù
-              </button>
-              <button
-                type="button"
-                aria-label="Salta"
-                className="grid h-20 min-w-28 place-items-center rounded-full bg-peach px-5 font-display text-2xl text-cocoa shadow-lg"
-                {...hold("Space")}
-              >
-                Salta
-              </button>
-            </div>
+          <div
+            className="pointer-events-auto absolute inset-0 z-20 touch-none"
+            onPointerDown={jumpDown}
+            onPointerUp={jumpUp}
+            onPointerCancel={jumpUp}
+          />
+        ) : null}
+
+        {touch && mode === "play" ? (
+          <div className="pointer-events-none absolute inset-0 z-30 flex items-end justify-between px-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.75rem,env(safe-area-inset-bottom))] landscape:items-center">
+            <button
+              type="button"
+              data-move
+              aria-label="Sinistra"
+              className="pointer-events-auto grid h-28 w-28 place-items-center rounded-full bg-foam/95 text-cocoa shadow-lg landscape:h-32 landscape:w-32"
+              {...hold("ArrowLeft")}
+            >
+              <ChevronLeft className="h-14 w-14" />
+            </button>
+            <button
+              type="button"
+              data-move
+              aria-label="Destra"
+              className="pointer-events-auto grid h-28 w-28 place-items-center rounded-full bg-foam/95 text-cocoa shadow-lg landscape:h-32 landscape:w-32"
+              {...hold("ArrowRight")}
+            >
+              <ChevronRight className="h-14 w-14" />
+            </button>
           </div>
-        ) : <div className="mt-auto" />}
+        ) : (
+          <div className="mt-auto" />
+        )}
 
         {mode === "pause" && bag.current.sim ? (
-          <div className="pointer-events-auto absolute inset-0 grid place-items-center bg-cocoa/35 p-4">
+          <div className="pointer-events-auto absolute inset-0 z-40 grid place-items-center overflow-y-auto bg-cocoa/35 p-4">
             <div className="w-full max-w-sm rounded-card bg-foam px-6 py-6 text-center shadow-lg">
               <h2 className="font-display text-3xl">Pausa</h2>
               <p className="mt-1 text-cocoa/80">Orso ti aspetta.</p>
@@ -496,6 +536,9 @@ export function OrsoGame() {
                   onClick={() => {
                     bag.current.mode = "title";
                     bag.current.keys.clear();
+                    bag.current.pointers.clear();
+                    bag.current.jumps.clear();
+      bag.current.jumpQueue = 0;
                     setMode("title");
                   }}
                 >
@@ -507,7 +550,7 @@ export function OrsoGame() {
         ) : null}
 
         {mode === "win" && win ? (
-          <div className="pointer-events-auto absolute inset-0 grid place-items-center bg-cocoa/35 p-4">
+          <div className="pointer-events-auto absolute inset-0 z-40 grid place-items-center overflow-y-auto bg-cocoa/35 p-4">
             <div className="w-full max-w-sm rounded-card bg-foam px-6 py-6 text-center shadow-lg">
               <img src={asset("/sprites/bear/idle-2.png")} alt="" className="floaty mx-auto h-24 w-auto" />
               <h2 className="font-display text-4xl">{win.title}</h2>
@@ -531,6 +574,9 @@ export function OrsoGame() {
                   onClick={() => {
                     bag.current.mode = "title";
                     bag.current.keys.clear();
+                    bag.current.pointers.clear();
+                    bag.current.jumps.clear();
+      bag.current.jumpQueue = 0;
                     setMode("title");
                   }}
                 >
@@ -542,11 +588,11 @@ export function OrsoGame() {
         ) : null}
 
         {help ? (
-          <div className="pointer-events-auto absolute inset-0 grid place-items-center bg-cocoa/40 p-4">
+          <div className="pointer-events-auto absolute inset-0 z-40 grid place-items-center overflow-y-auto bg-cocoa/40 p-4">
             <div className="max-h-[85vh] w-full max-w-md overflow-auto rounded-card bg-foam px-6 py-5 shadow-lg">
               <h2 className="font-display text-3xl">Come si gioca</h2>
               <ul className="mt-3 space-y-2 text-base leading-snug">
-                <li>Frecce oppure A e D per camminare. Spazio, W o il pulsante Salta per saltare. Tieni premuto per un salto più alto. Giù per scendere da un cuscino.</li>
+                <li>Tocca lo schermo dove vuoi per saltare. Tieni premuto per un salto più alto. Le due frecce grandi fanno camminare. Da tastiera: frecce o A e D, spazio per saltare.</li>
                 <li>Il cuscino a righe è una molla: ci salti sopra e voli. Alcuni tappeti si muovono da soli, salici sopra.</li>
                 <li>Spugna Birba cammina, Rotolino rotola, la Bolla vola, Paperotto l'anatra saltella. Saltagli sulla testa: spariscono e tu rimbalzi.</li>
                 <li>Il barattolo di borotalco fa una nuvoletta: nessuno ti tocca e salti più su.</li>
