@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #fff4e4;
+  --color-foam: #fffaf3;
+  --color-cocoa: #5a3828;
+  --color-peach: #f3a073;
+  --color-mint: #6fbfa0;
+  --color-gold: #e8b63a;
+  --font-display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --font-sans: "Nunito", "Trebuchet MS", system-ui, sans-serif;
+  --radius-card: 1.5rem;
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--color-cream);
+    color: var(--color-cocoa);
+    font-family: var(--font-sans);
+  }
+
+  button:focus-visible {
+    outline: 3px solid var(--color-mint);
+    outline-offset: 3px;
+  }
+}
+
+.play-frame {
+  width: min(100vw, calc(100dvh * 16 / 9));
+  height: min(100dvh, calc(100vw * 9 / 16));
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.floaty {
+  animation: bob 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floaty {
+    animation: none;
+  }
+}
