@@ -21,23 +21,88 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.roundRect(x, y, w, h, r);
 }
 
-function drawPlatform(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null, s: Solid, fill: string) {
-  ctx.fillStyle = fill;
-  roundRect(ctx, s.x, s.y, s.w, s.h + 10, 12);
-  ctx.fill();
-  if (!img) return;
-  const aspect = img.width / Math.max(1, img.height);
-  const ih = Math.max(s.h + 22, 46);
-  const tileW = ih * aspect;
-  const iy = s.y - (ih - s.h) * 0.42;
-  ctx.save();
+function drawPlatform(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null, s: Solid, fill: string, t: number) {
+  ctx.fillStyle = "rgba(90,56,40,0.12)";
   ctx.beginPath();
-  ctx.rect(s.x - 4, iy - 2, s.w + 8, ih + 8);
-  ctx.clip();
-  for (let x = s.x - 4; x < s.x + s.w + 4; x += Math.max(8, tileW - 1)) {
-    ctx.drawImage(img, x, iy, tileW, ih);
+  ctx.ellipse(s.x + s.w / 2, s.y + s.h + 8, s.w * 0.42, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const squish = s.bounce ? 1 + Math.sin(t * 7 + s.x * 0.01) * 0.06 : 1;
+  ctx.save();
+  ctx.translate(s.x + s.w / 2, s.y + s.h);
+  ctx.scale(1, squish);
+  ctx.translate(-(s.x + s.w / 2), -(s.y + s.h));
+  ctx.fillStyle = s.bounce ? "#b7e6d6" : fill;
+  roundRect(ctx, s.x, s.y, s.w, s.h + 8, 14);
+  ctx.fill();
+  if (s.bounce) {
+    ctx.fillStyle = "#6fbfa0";
+    roundRect(ctx, s.x + 8, s.y + 6, s.w - 16, 8, 6);
+    ctx.fill();
+    ctx.fillStyle = "#fffaf3";
+    ctx.beginPath();
+    ctx.moveTo(s.x + s.w / 2, s.y - 16);
+    ctx.lineTo(s.x + s.w / 2 - 10, s.y - 4);
+    ctx.lineTo(s.x + s.w / 2 + 10, s.y - 4);
+    ctx.closePath();
+    ctx.fill();
+  }
+  if (img && !s.bounce) {
+    const aspect = img.width / Math.max(1, img.height);
+    const ih = Math.max(s.h + 22, 46);
+    const tileW = ih * aspect;
+    const iy = s.y - (ih - s.h) * 0.42;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(s.x - 4, iy - 2, s.w + 8, ih + 8);
+    ctx.clip();
+    for (let x = s.x - 4; x < s.x + s.w + 4; x += Math.max(8, tileW - 1)) {
+      ctx.drawImage(img, x, iy, tileW, ih);
+    }
+    ctx.restore();
   }
   ctx.restore();
+}
+
+function drawDressing(ctx: CanvasRenderingContext2D, sim: Sim) {
+  const ground = sim.solids.find((s) => s.kind === "ground");
+  if (!ground) return;
+  ctx.fillStyle = "rgba(255,250,243,0.72)";
+  ctx.fillRect(ground.x, ground.y, ground.w, 12);
+  const rug = sim.theme === "bagno" ? "rgba(111,191,160,0.45)" : sim.theme === "corridoio" ? "rgba(232,182,58,0.28)" : "rgba(243,160,115,0.35)";
+  ctx.fillStyle = rug;
+  for (let x = 220; x < sim.w; x += 560) {
+    ctx.beginPath();
+    ctx.ellipse(x, ground.y + 6, 78, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (sim.theme === "salotto") {
+    for (let x = 280; x < sim.w; x += 700) {
+      ctx.fillStyle = "#fffaf3";
+      roundRect(ctx, x, ground.y - 250, 78, 56, 8);
+      ctx.fill();
+      ctx.strokeStyle = "#e8b63a";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = "#f3a073";
+      ctx.fillRect(x + 14, ground.y - 234, 50, 28);
+    }
+  } else if (sim.theme === "corridoio") {
+    ctx.fillStyle = "rgba(255,250,243,0.4)";
+    for (let x = 180; x < sim.w; x += 320) {
+      roundRect(ctx, x, ground.y - 230, 28, 78, 8);
+      ctx.fill();
+    }
+  } else {
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    for (let i = 0; i < 16; i++) {
+      const x = (i * 340 + Math.sin(sim.t * 0.6 + i) * 16) % sim.w;
+      const y = 70 + (i % 4) * 34 + Math.sin(sim.t * 0.9 + i) * 8;
+      ctx.beginPath();
+      ctx.arc(x, y, 7 + (i % 3) * 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 }
 
 function blit(
@@ -95,6 +160,7 @@ export function renderWorld(
     grad.addColorStop(1, theme.bottom);
     ctx.fillStyle = grad;
     ctx.fillRect(ground.x, ground.y, ground.w, ground.h);
+    drawDressing(ctx, sim);
     ctx.strokeStyle = theme.line;
     ctx.lineWidth = 3;
     const left = camX - 20;
@@ -120,7 +186,7 @@ export function renderWorld(
   const imgFor = (s: Solid) => (s.kind === "pillow" ? art.pillow : s.kind === "bench" ? art.bench : art.mat);
   for (const s of sim.solids) {
     if (s.kind === "ground") continue;
-    drawPlatform(ctx, imgFor(s), s, theme.plat);
+    drawPlatform(ctx, imgFor(s), s, theme.plat, sim.t);
   }
 
   for (const cp of sim.checkpoints) {
@@ -139,12 +205,13 @@ export function renderWorld(
 
   sim.coins.forEach((c, i) => {
     if (c.got || !art.star) return;
-    const bob = Math.sin(sim.t * 3 + i) * 4;
-    const squash = 0.82 + 0.18 * Math.abs(Math.sin(sim.t * 4 + i));
+    const bob = Math.sin(sim.t * 3.4 + i) * 5;
+    const squash = 0.86 + 0.14 * Math.abs(Math.sin(sim.t * 5 + i));
     ctx.save();
     ctx.translate(c.x + 15, c.y + 15 + bob);
+    ctx.rotate(Math.sin(sim.t * 2 + i) * 0.12);
     ctx.scale(squash, 1);
-    ctx.drawImage(art.star, -20, -20, 40, 40);
+    ctx.drawImage(art.star, -22, -22, 44, 44);
     ctx.restore();
   });
 
@@ -160,6 +227,16 @@ export function renderWorld(
   }
 
   if (art.door) {
+    const near = Math.abs(sim.player.x - sim.goal.x) < 320;
+    if (near) {
+      ctx.save();
+      ctx.globalAlpha = 0.22 + Math.sin(sim.t * 4) * 0.12;
+      ctx.fillStyle = "#e8b63a";
+      ctx.beginPath();
+      ctx.ellipse(sim.goal.x + sim.goal.w / 2, sim.goal.y + sim.goal.h - 6, 54, 16, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
     const dh = 214;
     const dw = dh * (art.door.width / art.door.height);
     ctx.drawImage(art.door, sim.goal.x + sim.goal.w / 2 - dw / 2, sim.goal.y + sim.goal.h - dh, dw, dh);
@@ -208,7 +285,8 @@ export function renderWorld(
   if (!p.grounded) {
     sprite = p.vy < -160 ? frameAt(art.jump, 1, 1) : p.vy < 120 ? frameAt(art.jump, 2, 1) : frameAt(art.jump, 3, 1);
   } else if (Math.abs(p.vx) > 24) {
-    sprite = frameAt(art.run, p.anim, 9);
+    const fps = p.speed > 0 ? 13 : 10;
+    sprite = frameAt(art.run, p.anim, fps);
   }
   if (sprite) {
     let sx = 1;
@@ -254,6 +332,18 @@ export function renderWorld(
     ctx.fill();
   }
   ctx.globalAlpha = 1;
+  ctx.restore();
+
+  ctx.save();
+  for (let i = 0; i < 10; i++) {
+    const x = (i * 149 + sim.t * (10 + (i % 3) * 7)) % VIEW_W;
+    const y = (80 + i * 46 + Math.sin(sim.t * 0.7 + i) * 16) % VIEW_H;
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = "#fffaf3";
+    ctx.beginPath();
+    ctx.arc(x, y, 1.4 + (i % 3) * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
 }
 

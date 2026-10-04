@@ -10,7 +10,9 @@ export type PowerKind = "powder" | "glide" | "speed" | "heart";
 
 export type Rect = { x: number; y: number; w: number; h: number };
 
-export type Solid = Rect & { kind: SolidKind; oneWay: boolean };
+export type Mover = { axis: "x" | "y"; origin: number; amp: number; speed: number; phase: number };
+
+export type Solid = Rect & { kind: SolidKind; oneWay: boolean; bounce?: boolean; move?: Mover };
 
 export type Coin = Rect & { got: boolean };
 

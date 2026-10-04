@@ -2,15 +2,15 @@ import { createLevel } from "@/game/levels";
 import { PH, PW } from "@/game/types";
 import type { Input, Level, Particle, Player, PowerKind, Rect, StepEvents } from "@/game/types";
 
-const GRAV_UP = 1480;
-const GRAV_DOWN = 2750;
-const GRAV_APEX = 760;
-const JUMP = -780;
-const JUMP_POWDER = -900;
-const MAX_FALL = 860;
-const RUN = 235;
-const FAST = 348;
-const STEP_UP = 36;
+const GRAV_UP = 1380;
+const GRAV_DOWN = 2500;
+const GRAV_APEX = 680;
+const JUMP = -820;
+const JUMP_POWDER = -960;
+const MAX_FALL = 820;
+const RUN = 250;
+const FAST = 372;
+const STEP_UP = 38;
 
 type SimState = {
   levelIndex: number;
@@ -74,6 +74,30 @@ function puff(sim: SimState, x: number, y: number, color: string, n: number, spe
     });
   }
   if (sim.particles.length > 120) sim.particles.splice(0, sim.particles.length - 120);
+}
+
+function updateMovers(sim: SimState) {
+  const p = sim.player;
+  for (const s of sim.solids) {
+    const m = s.move;
+    if (!m) continue;
+    const prevX = s.x;
+    const prevY = s.y;
+    const wave = Math.sin(sim.t * m.speed + m.phase);
+    if (m.axis === "x") s.x = m.origin + wave * m.amp;
+    else s.y = m.origin + wave * m.amp;
+    const feet = p.y + PH;
+    const standing =
+      p.grounded &&
+      feet <= prevY + 8 &&
+      feet >= prevY - 12 &&
+      p.x + PW > prevX + 2 &&
+      p.x < prevX + s.w - 2;
+    if (standing) {
+      p.x += s.x - prevX;
+      p.y += s.y - prevY;
+    }
+  }
 }
 
 function updateParticles(sim: SimState, dt: number) {
@@ -181,9 +205,10 @@ function resolveX(sim: SimState, x: number) {
   return x;
 }
 
-function resolveY(sim: SimState, y: number, prevBottom: number) {
+function resolveY(sim: SimState, y: number, prevBottom: number, prevVy: number) {
   const p = sim.player;
   let grounded = false;
+  let bounced = false;
   for (const s of sim.solids) {
     if (!hit(p.x, y, PW, PH, s)) continue;
     if (s.oneWay) {
@@ -191,14 +216,15 @@ function resolveY(sim: SimState, y: number, prevBottom: number) {
     }
     if (p.vy > 0 || prevBottom <= s.y + 2) {
       y = s.y - PH;
-      p.vy = 0;
+      if (s.bounce && prevVy > 70) bounced = true;
+      else p.vy = 0;
       grounded = true;
     } else {
       y = s.y + s.h;
       p.vy = 0;
     }
   }
-  return { y, grounded };
+  return { y, grounded, bounced };
 }
 
 export function createSim(index: number): SimState {
@@ -291,27 +317,29 @@ export function step(sim: SimState, input: Input, dt: number): StepEvents {
   p.drop = Math.max(0, p.drop - dt);
 
   const wasGrounded = p.grounded;
-  if (wasGrounded) p.coyote = 0.12;
+  if (wasGrounded) p.coyote = 0.14;
   else p.coyote = Math.max(0, p.coyote - dt);
-  if (input.jumpPressed) p.buffer = 0.14;
+  if (input.jumpPressed) p.buffer = 0.16;
   else p.buffer = Math.max(0, p.buffer - dt);
   if (input.down && wasGrounded) p.drop = 0.28;
+
+  updateMovers(sim);
 
   if (input.x < 0) p.facing = -1;
   else if (input.x > 0) p.facing = 1;
 
   const max = p.speed > 0 ? FAST : RUN;
-  const accel = wasGrounded ? 2600 : 1750;
+  const accel = wasGrounded ? 3400 : 2200;
   if (input.x !== 0) {
     p.vx += input.x * accel * dt;
     if (p.vx > max) p.vx = max;
     if (p.vx < -max) p.vx = -max;
   } else if (wasGrounded) {
-    const f = 3400 * dt;
+    const f = 2200 * dt;
     if (Math.abs(p.vx) <= f) p.vx = 0;
     else p.vx -= Math.sign(p.vx) * f;
   } else {
-    p.vx *= Math.max(0, 1 - 0.85 * dt);
+    p.vx *= Math.max(0, 1 - 0.7 * dt);
   }
 
   if (p.buffer > 0 && (wasGrounded || p.coyote > 0)) {
@@ -336,10 +364,22 @@ export function step(sim: SimState, input: Input, dt: number): StepEvents {
   p.x = resolveX(sim, p.x + p.vx * dt);
   const yBefore = p.y;
   const prevVy = p.vy;
-  const moved = resolveY(sim, p.y + p.vy * dt, yBefore + PH);
+  const moved = resolveY(sim, p.y + p.vy * dt, yBefore + PH, prevVy);
   p.y = moved.y;
-  p.grounded = moved.grounded;
-  if (!wasGrounded && p.grounded && prevVy > 240) p.land = 0.12;
+  p.grounded = moved.grounded && !moved.bounced;
+  if (moved.bounced) {
+    p.vy = p.powder > 0 ? -1080 : -980;
+    p.grounded = false;
+    p.jumpCut = false;
+    p.coyote = 0;
+    events.jump = true;
+    if (!sim.gentle) sim.shake = Math.max(sim.shake, 3);
+    puff(sim, p.x + PW / 2, p.y + PH, "#9ed9c8", 8, 120);
+  }
+  if (!wasGrounded && p.grounded && prevVy > 240) {
+    p.land = 0.12;
+    puff(sim, p.x + PW / 2, p.y + PH, "#f6e3d4", 4, 50);
+  }
   if (p.grounded) p.jumpCut = false;
 
   if (wasGrounded && p.grounded && Math.abs(p.vx) > 90 && Math.random() < dt * 10) {

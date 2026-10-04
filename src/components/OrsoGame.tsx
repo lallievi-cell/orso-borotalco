@@ -69,7 +69,7 @@ function toHud(sim: Sim): Hud {
     powder: sim.player.powder,
     glide: sim.player.glide,
     speed: sim.player.speed,
-    hint: sim.t < 4.6 ? sim.hint : "",
+    hint: sim.t < 8 ? sim.hint : "",
   };
 }
 
@@ -236,10 +236,12 @@ export function OrsoGame() {
           acc -= 1 / 60;
           n += 1;
         }
-        const tx = clamp(sim.player.x + PW / 2 - VIEW_W / 2 + sim.player.facing * 70, 0, Math.max(0, sim.w - VIEW_W));
+        const look = clamp(sim.player.vx * 0.28, -140, 140);
+        const tx = clamp(sim.player.x + PW / 2 - VIEW_W / 2 + look, 0, Math.max(0, sim.w - VIEW_W));
         const ty = clamp(sim.player.y + PH / 2 - VIEW_H * 0.58, 0, Math.max(0, sim.h - VIEW_H));
-        b.cam.x += (tx - b.cam.x) * Math.min(1, dt * 4.5);
-        b.cam.y += (ty - b.cam.y) * Math.min(1, dt * 4.5);
+        const follow = 1 - Math.exp(-8 * dt);
+        b.cam.x += (tx - b.cam.x) * follow;
+        b.cam.y += (ty - b.cam.y) * follow;
         if (now - b.hudAt > 120) {
           b.hudAt = now;
           setHud(toHud(sim));
@@ -339,14 +341,15 @@ export function OrsoGame() {
       <div className="pointer-events-none relative z-10 flex h-full flex-col">
         {mode === "title" ? (
           <div className="pointer-events-auto mt-auto flex w-full justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            <div className="flex w-full max-w-xl flex-col items-center gap-3 rounded-card bg-foam/90 px-5 py-4 text-center shadow-lg">
-              <img src={asset("/sprites/bear/idle-1.png")} alt="" className="floaty h-24 w-auto sm:h-36" />
+            <div className="flex w-full max-w-xl flex-col items-center gap-3 rounded-card bg-foam/95 px-5 py-5 text-center shadow-lg">
+              <p className="rounded-full bg-peach/40 px-3 py-1 font-display text-sm">Tre stanze, un bagno</p>
+              <img src={asset("/sprites/bear/idle-1.png")} alt="" className="floaty h-28 w-auto sm:h-40" />
               <div>
                 <h1 className="font-display text-4xl leading-none sm:text-6xl">Orso Borotalco</h1>
                 <p className="mt-2 text-base leading-snug sm:text-lg">
                   Gli scappa la cacca. Aiutalo ad arrivare in bagno!
                 </p>
-                <p className="mt-1 text-sm text-cocoa/70">Se sbaglia, fa un riposino e riparte. Niente spaventi.</p>
+                <p className="mt-1 text-sm text-cocoa/70">Cuscini molla, tappeti che camminano e scale da salire. Se sbaglia, fa un riposino.</p>
               </div>
               <button
                 type="button"
@@ -386,39 +389,44 @@ export function OrsoGame() {
         ) : null}
 
         {playing ? (
-          <div className="pointer-events-none flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-            <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-foam/90 px-3 py-2 shadow">
-              <div className="flex">
-                {Array.from({ length: 5 }, (_, i) => (
-                  <img
-                    key={i}
-                    src={asset("/sprites/heart.png")}
-                    alt=""
-                    className={`h-7 w-7 object-contain ${i < hud.hearts ? "" : "opacity-30"}`}
-                  />
-                ))}
+          <div className="pointer-events-none flex flex-col gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+            <div className="flex items-center justify-between gap-2">
+              <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-foam/95 px-2.5 py-1.5 shadow">
+                <div className="flex">
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <img
+                      key={i}
+                      src={asset("/sprites/heart.png")}
+                      alt=""
+                      className={`h-6 w-6 object-contain ${i < hud.hearts ? "" : "opacity-25"}`}
+                    />
+                  ))}
+                </div>
+                <img src={asset("/sprites/star.png")} alt="" className="h-6 w-6 object-contain" />
+                <span className="font-display text-lg leading-none">{hud.stars}</span>
               </div>
-              <img src={asset("/sprites/star.png")} alt="" className="h-7 w-7 object-contain" />
-              <span className="font-display text-xl">{hud.stars}</span>
-            </div>
-            <div className="rounded-full bg-foam/90 px-3 py-2 font-display text-lg shadow">{hud.name}</div>
-            <div className="pointer-events-auto flex gap-2">
-              <button type="button" className="grid h-11 w-11 place-items-center rounded-full bg-foam shadow" onClick={toggleMute} aria-label={muted ? "Attiva il suono" : "Silenzia"}>
-                {muted ? <VolumeX /> : <Volume2 />}
-              </button>
-              {mode === "play" ? (
-                <button
-                  type="button"
-                  className="grid h-11 w-11 place-items-center rounded-full bg-foam shadow"
-                  aria-label="Pausa"
-                  onClick={() => {
-                    bag.current.mode = "pause";
-                    setMode("pause");
-                  }}
-                >
-                  <Pause />
+              <div className="pointer-events-auto flex gap-2">
+                <button type="button" className="grid h-11 w-11 place-items-center rounded-full bg-foam shadow" onClick={toggleMute} aria-label={muted ? "Attiva il suono" : "Silenzia"}>
+                  {muted ? <VolumeX /> : <Volume2 />}
                 </button>
-              ) : null}
+                {mode === "play" ? (
+                  <button
+                    type="button"
+                    className="grid h-11 w-11 place-items-center rounded-full bg-foam shadow"
+                    aria-label="Pausa"
+                    onClick={() => {
+                      bag.current.mode = "pause";
+                      setMode("pause");
+                    }}
+                  >
+                    <Pause />
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <div className="mx-auto rounded-full bg-foam/95 px-3 py-1 text-center font-display text-base shadow">
+              {hud.name}
+              <span className="ml-2 text-sm text-cocoa/70">{hud.left} rimaste</span>
             </div>
           </div>
         ) : null}
@@ -430,7 +438,7 @@ export function OrsoGame() {
         ) : null}
 
         {playing && hud.hint ? (
-          <p className="pointer-events-none mx-auto mt-2 max-w-md rounded-full bg-foam/90 px-4 py-2 text-center text-sm shadow">{hud.hint}</p>
+          <p className="pointer-events-none mx-auto mt-2 max-w-md rounded-full bg-foam/95 px-4 py-2 text-center text-sm shadow">{hud.hint}</p>
         ) : null}
 
         {toast ? (
@@ -446,21 +454,26 @@ export function OrsoGame() {
         {touch && mode === "play" ? (
           <div className="pointer-events-none mt-auto flex items-end justify-between px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div className="pointer-events-auto flex gap-3">
-              <button type="button" aria-label="Sinistra" className="grid h-16 w-16 place-items-center rounded-full bg-foam text-cocoa shadow-lg" {...hold("ArrowLeft")}>
-                <ChevronLeft className="h-8 w-8" />
+              <button type="button" aria-label="Sinistra" className="grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-foam/95 text-cocoa shadow-lg" {...hold("ArrowLeft")}>
+                <ChevronLeft className="h-9 w-9" />
               </button>
-              <button type="button" aria-label="Destra" className="grid h-16 w-16 place-items-center rounded-full bg-foam text-cocoa shadow-lg" {...hold("ArrowRight")}>
-                <ChevronRight className="h-8 w-8" />
+              <button type="button" aria-label="Destra" className="grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-foam/95 text-cocoa shadow-lg" {...hold("ArrowRight")}>
+                <ChevronRight className="h-9 w-9" />
               </button>
             </div>
-            <button
-              type="button"
-              aria-label="Salta"
-              className="pointer-events-auto grid h-20 min-w-24 place-items-center rounded-full bg-peach px-5 font-display text-2xl text-cocoa shadow-lg"
-              {...hold("Space")}
-            >
-              Salta
-            </button>
+            <div className="pointer-events-auto flex items-end gap-2">
+              <button type="button" aria-label="Scendi" className="grid h-14 min-w-14 place-items-center rounded-full bg-cream/95 px-3 font-display text-sm text-cocoa shadow-lg" {...hold("ArrowDown")}>
+                Giù
+              </button>
+              <button
+                type="button"
+                aria-label="Salta"
+                className="grid h-20 min-w-28 place-items-center rounded-full bg-peach px-5 font-display text-2xl text-cocoa shadow-lg"
+                {...hold("Space")}
+              >
+                Salta
+              </button>
+            </div>
           </div>
         ) : <div className="mt-auto" />}
 
@@ -540,7 +553,8 @@ export function OrsoGame() {
             <div className="max-h-[85vh] w-full max-w-md overflow-auto rounded-card bg-foam px-6 py-5 shadow-lg">
               <h2 className="font-display text-3xl">Come si gioca</h2>
               <ul className="mt-3 space-y-2 text-base leading-snug">
-                <li>Frecce oppure A e D per camminare. Spazio, W o il pulsante Salta per saltare. Tieni premuto per un salto più alto.</li>
+                <li>Frecce oppure A e D per camminare. Spazio, W o il pulsante Salta per saltare. Tieni premuto per un salto più alto. Giù per scendere da un cuscino.</li>
+                <li>Il cuscino a righe è una molla: ci salti sopra e voli. Alcuni tappeti si muovono da soli, salici sopra.</li>
                 <li>Spugna Birba cammina, Rotolino rotola, la Bolla vola, Paperotto l'anatra saltella. Saltagli sulla testa: si fermano e tu rimbalzi.</li>
                 <li>Il barattolo di borotalco fa una nuvoletta: nessuno ti tocca e salti più su.</li>
                 <li>La ciambella di sapone ti fa planare se tieni premuto il salto.</li>
