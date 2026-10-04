@@ -93,6 +93,8 @@ export function OrsoGame() {
     art: null as Art | null,
     keys: new Set<string>(),
     injected: new Set<string>(),
+    pointers: new Map<number, string>(),
+    jumpDownAt: 0,
     wasJump: false,
     audio: null as AudioBus | null,
     save: emptySave(),
@@ -159,7 +161,15 @@ export function OrsoGame() {
     const onKeyDown = (e: KeyboardEvent) => {
       bag.current.keys.add(e.code);
       const m = bag.current.mode;
-      if ((m === "play" || m === "pause") && (e.code === "Space" || e.code.startsWith("Arrow"))) e.preventDefault();
+      const gameKey =
+        e.code === "Space" ||
+        e.code.startsWith("Arrow") ||
+        e.code === "KeyA" ||
+        e.code === "KeyD" ||
+        e.code === "KeyW" ||
+        e.code === "KeyS";
+      if ((m === "play" || m === "pause") && gameKey) e.preventDefault();
+      if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") bag.current.jumpDownAt = performance.now();
       if (e.code === "Escape" || e.code === "KeyP") {
         if (m === "play") {
           bag.current.mode = "pause";
@@ -171,13 +181,26 @@ export function OrsoGame() {
         }
       }
     };
-    const onKeyUp = (e: KeyboardEvent) => bag.current.keys.delete(e.code);
+    const onKeyUp = (e: KeyboardEvent) => {
+      const move = e.code === "ArrowLeft" || e.code === "ArrowRight" || e.code === "KeyA" || e.code === "KeyD";
+      // Some keyboards drop the direction key the instant jump is pressed. Ignore that fake release.
+      if (move && performance.now() - bag.current.jumpDownAt < 120) return;
+      bag.current.keys.delete(e.code);
+    };
     const onBlur = () => bag.current.keys.clear();
     const onUnlock = () => audio.unlock();
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", onBlur);
     window.addEventListener("pointerdown", onUnlock);
+    const onPointerUp = (e: PointerEvent) => {
+      const code = bag.current.pointers.get(e.pointerId);
+      if (!code) return;
+      bag.current.pointers.delete(e.pointerId);
+      for (const held of bag.current.pointers.values()) if (held === code) return;
+      bag.current.keys.delete(code);
+    };
+    window.addEventListener("pointerup", onPointerUp);
 
     void loadArt().then((art) => {
       if (!dead) bag.current.art = art;
@@ -288,6 +311,7 @@ export function OrsoGame() {
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("pointerdown", onUnlock);
+      window.removeEventListener("pointerup", onPointerUp);
       coarse.removeEventListener("change", onCoarse);
       window.clearTimeout(bag.current.toastTimer);
       delete window.__controlsTest;
@@ -312,15 +336,26 @@ export function OrsoGame() {
     bag.current.audio?.startMusic();
   }
 
+  function releasePointer(id: number) {
+    const code = bag.current.pointers.get(id);
+    if (!code) return;
+    bag.current.pointers.delete(id);
+    for (const held of bag.current.pointers.values()) if (held === code) return;
+    bag.current.keys.delete(code);
+  }
+
   function hold(code: string) {
     return {
       onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
         e.preventDefault();
-        bag.current.keys.add(code);
         e.currentTarget.setPointerCapture(e.pointerId);
+        bag.current.pointers.set(e.pointerId, code);
+        bag.current.keys.add(code);
       },
-      onPointerUp: () => bag.current.keys.delete(code),
-      onPointerCancel: () => bag.current.keys.delete(code),
+      onPointerUp: (e: React.PointerEvent<HTMLButtonElement>) => releasePointer(e.pointerId),
+      onPointerCancel: () => {
+        // Phones cancel the first finger when Salta is pressed. Keep holding.
+      },
     };
   }
 
@@ -452,8 +487,8 @@ export function OrsoGame() {
         </div>
 
         {touch && mode === "play" ? (
-          <div className="pointer-events-none mt-auto flex items-end justify-between px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            <div className="pointer-events-auto flex gap-3">
+          <div className="pointer-events-none mt-auto flex items-end justify-between px-4 pb-[max(1rem,env(safe-area-inset-bottom))] [touch-action:none]">
+            <div className="pointer-events-auto flex gap-3 [touch-action:none]">
               <button type="button" aria-label="Sinistra" className="grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-foam/95 text-cocoa shadow-lg" {...hold("ArrowLeft")}>
                 <ChevronLeft className="h-9 w-9" />
               </button>
@@ -461,7 +496,7 @@ export function OrsoGame() {
                 <ChevronRight className="h-9 w-9" />
               </button>
             </div>
-            <div className="pointer-events-auto flex items-end gap-2">
+            <div className="pointer-events-auto flex items-end gap-2 [touch-action:none]">
               <button type="button" aria-label="Scendi" className="grid h-14 min-w-14 place-items-center rounded-full bg-cream/95 px-3 font-display text-sm text-cocoa shadow-lg" {...hold("ArrowDown")}>
                 Giù
               </button>

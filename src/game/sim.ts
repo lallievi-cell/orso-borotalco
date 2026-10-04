@@ -180,8 +180,8 @@ function resolveX(sim: SimState, x: number) {
     if (s.oneWay) continue;
     if (!hit(x, p.y, PW, PH, s)) continue;
     const rise = p.y + PH - s.y;
-    if (p.vy >= -1 && rise > 0 && rise <= STEP_UP && p.y < s.y) {
-      p.y -= rise;
+    if (rise > 0 && rise <= STEP_UP + 6 && p.y < s.y) {
+      if (p.vy >= 0) p.y -= rise;
       continue;
     }
     if (p.vx > 0) x = Math.min(x, s.x - PW);
