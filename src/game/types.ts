@@ -36,6 +36,7 @@ export type Enemy = {
   hop: number;
   homeY: number;
   floor: number;
+  fade: number;
 };
 
 export type Player = {

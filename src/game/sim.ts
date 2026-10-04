@@ -126,6 +126,11 @@ function grantStar(sim: SimState, events: StepEvents) {
 
 function updateEnemies(sim: SimState, dt: number) {
   for (const e of sim.enemies) {
+    if (e.fade > 0) {
+      e.fade -= dt;
+      if (e.fade <= 0) e.fade = -1;
+      continue;
+    }
     e.stun = Math.max(0, e.stun - dt);
     e.phase += dt;
     if (e.kind === "bubble") {
@@ -172,6 +177,7 @@ function updateEnemies(sim: SimState, dt: number) {
       e.dir = -1;
     }
   }
+  if (sim.enemies.some((e) => e.fade < 0)) sim.enemies = sim.enemies.filter((e) => e.fade >= 0);
 }
 
 function resolveX(sim: SimState, x: number) {
@@ -393,26 +399,22 @@ export function step(sim: SimState, input: Input, dt: number): StepEvents {
 
   const prevBottom = yBefore + PH;
   for (const e of sim.enemies) {
+    if (e.fade !== 0) continue;
     if (!hit(p.x, p.y, PW, PH, e)) continue;
     const stomp = p.vy > 30 && prevBottom <= e.y + 16;
-    if (stomp) {
-      p.vy = -540;
-      p.grounded = false;
-      p.jumpCut = false;
-      e.stun = Math.max(e.stun, 3.3);
-      events.stomp = true;
-      if (!sim.gentle) sim.shake = Math.max(sim.shake, 5);
-      puff(sim, e.x + e.w / 2, e.y, "#fff6ea", 7, 110);
-      continue;
-    }
-    if (p.powder > 0) {
-      if (e.stun < 0.4) {
-        e.stun = 1.3;
-        puff(sim, e.x + e.w / 2, e.y, "#ffffff", 5, 80);
+    if (stomp || p.powder > 0) {
+      if (stomp) {
+        p.vy = -540;
+        p.grounded = false;
+        p.jumpCut = false;
       }
+      e.fade = 0.42;
+      events.stomp = true;
+      if (!sim.gentle) sim.shake = Math.max(sim.shake, 4);
+      puff(sim, e.x + e.w / 2, e.y + e.h / 2, stomp ? "#fff6ea" : "#ffffff", 10, 140);
       continue;
     }
-    if (e.stun <= 0 && p.invuln <= 0) {
+    if (p.invuln <= 0) {
       p.hearts -= 1;
       p.invuln = 1.35;
       p.vx = p.x + PW / 2 < e.x + e.w / 2 ? -250 : 250;

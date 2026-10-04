@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { asset, loadArt, type Art } from "@/game/assets";
 import { createAudio, type AudioBus } from "@/game/audio";
 import { renderTitle, renderWorld } from "@/game/draw";
-import { coinTotal, coinsLeft, createSim, powerLabel, step, type Sim } from "@/game/sim";
+import { coinTotal, coinsLeft, createSim, step, type Sim } from "@/game/sim";
 import { emptySave, loadSave, writeSave, type SaveData } from "@/game/save";
 import { PH, PW, VIEW_H, VIEW_W, type Input } from "@/game/types";
 
@@ -81,7 +81,6 @@ export function OrsoGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [mode, setMode] = useState<Mode>("title");
   const [hud, setHud] = useState<Hud>(emptyHud);
-  const [toast, setToast] = useState("");
   const [win, setWin] = useState<WinInfo | null>(null);
   const [help, setHelp] = useState(false);
   const [save, setSave] = useState<SaveData>(emptySave);
@@ -102,7 +101,6 @@ export function OrsoGame() {
     hudAt: 0,
     titleT: 0,
     gentle: false,
-    toastTimer: 0,
   });
 
   useEffect(() => {
@@ -138,14 +136,6 @@ export function OrsoGame() {
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(canvas);
-
-    const say = (text: string) => {
-      setToast(text);
-      window.clearTimeout(bag.current.toastTimer);
-      bag.current.toastTimer = window.setTimeout(() => {
-        if (!dead) setToast("");
-      }, 2300);
-    };
 
     const readInput = (): Input => {
       const has = (code: string) => bag.current.keys.has(code) || bag.current.injected.has(code);
@@ -223,16 +213,8 @@ export function OrsoGame() {
           if (ev.coins) audio.coin();
           if (ev.stomp) audio.stomp();
           if (ev.hurt) audio.hurt();
-          if (ev.checkpoint) {
-            audio.checkpoint();
-            say("Lucina accesa. Da qui si riparte.");
-          }
-          if (ev.power) {
-            audio.power();
-            say(powerLabel[ev.power]);
-          } else if (ev.heal) say("Un cuoricino in più!");
-          if (ev.nap) say("Facciamo un riposino… e si riparte.");
-          else if (ev.fall) say("Ops! Ti riprendo io.");
+          if (ev.checkpoint) audio.checkpoint();
+          if (ev.power) audio.power();
           if (ev.win) {
             b.mode = "win";
             setMode("win");
@@ -313,7 +295,6 @@ export function OrsoGame() {
       window.removeEventListener("pointerdown", onUnlock);
       window.removeEventListener("pointerup", onPointerUp);
       coarse.removeEventListener("change", onCoarse);
-      window.clearTimeout(bag.current.toastTimer);
       delete window.__controlsTest;
     };
   }, []);
@@ -329,7 +310,6 @@ export function OrsoGame() {
     bag.current.hudAt = 0;
     setHud(toHud(sim));
     setWin(null);
-    setToast("");
     setHelp(false);
     setMode("play");
     bag.current.audio?.unlock();
@@ -368,7 +348,6 @@ export function OrsoGame() {
 
   const playing = mode === "play" || mode === "pause" || mode === "win";
   const active = Math.max(0, hud.powder, hud.glide, hud.speed);
-  const activeName = hud.powder > 0 ? "Nuvoletta" : hud.glide > 0 ? "Planata" : hud.speed > 0 ? "Corsa" : "";
 
   return (
     <div className="relative h-dvh w-full overflow-hidden bg-cream text-cocoa">
@@ -439,6 +418,9 @@ export function OrsoGame() {
                 </div>
                 <img src={asset("/sprites/star.png")} alt="" className="h-6 w-6 object-contain" />
                 <span className="font-display text-lg leading-none">{hud.stars}</span>
+                {active > 0 ? (
+                  <span className="ml-1 font-display text-lg leading-none text-cocoa/80">{Math.ceil(active)}</span>
+                ) : null}
               </div>
               <div className="pointer-events-auto flex gap-2">
                 <button type="button" className="grid h-11 w-11 place-items-center rounded-full bg-foam shadow" onClick={toggleMute} aria-label={muted ? "Attiva il suono" : "Silenzia"}>
@@ -459,32 +441,8 @@ export function OrsoGame() {
                 ) : null}
               </div>
             </div>
-            <div className="mx-auto rounded-full bg-foam/95 px-3 py-1 text-center font-display text-base shadow">
-              {hud.name}
-              <span className="ml-2 text-sm text-cocoa/70">{hud.left} rimaste</span>
-            </div>
           </div>
         ) : null}
-
-        {playing && activeName ? (
-          <p className="pointer-events-none mx-auto mt-2 rounded-full bg-mint px-4 py-1 font-display text-cocoa">
-            {activeName} {Math.ceil(active)}s
-          </p>
-        ) : null}
-
-        {playing && hud.hint ? (
-          <p className="pointer-events-none mx-auto mt-2 max-w-md rounded-full bg-foam/95 px-4 py-2 text-center text-sm shadow">{hud.hint}</p>
-        ) : null}
-
-        {toast ? (
-          <p className="pointer-events-none mx-auto mt-2 max-w-md rounded-full bg-peach px-4 py-2 text-center font-display text-lg text-cocoa shadow" aria-live="polite">
-            {toast}
-          </p>
-        ) : null}
-
-        <div className="sr-only" aria-live="polite">
-          {toast}
-        </div>
 
         {touch && mode === "play" ? (
           <div className="pointer-events-none mt-auto flex items-end justify-between px-4 pb-[max(1rem,env(safe-area-inset-bottom))] [touch-action:none]">
@@ -590,7 +548,7 @@ export function OrsoGame() {
               <ul className="mt-3 space-y-2 text-base leading-snug">
                 <li>Frecce oppure A e D per camminare. Spazio, W o il pulsante Salta per saltare. Tieni premuto per un salto più alto. Giù per scendere da un cuscino.</li>
                 <li>Il cuscino a righe è una molla: ci salti sopra e voli. Alcuni tappeti si muovono da soli, salici sopra.</li>
-                <li>Spugna Birba cammina, Rotolino rotola, la Bolla vola, Paperotto l'anatra saltella. Saltagli sulla testa: si fermano e tu rimbalzi.</li>
+                <li>Spugna Birba cammina, Rotolino rotola, la Bolla vola, Paperotto l'anatra saltella. Saltagli sulla testa: spariscono e tu rimbalzi.</li>
                 <li>Il barattolo di borotalco fa una nuvoletta: nessuno ti tocca e salti più su.</li>
                 <li>La ciambella di sapone ti fa planare se tieni premuto il salto.</li>
                 <li>Lo spazzolino ti fa correre. Il cuoricino di cotone è una vita in più.</li>

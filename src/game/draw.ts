@@ -389,24 +389,24 @@ export function renderWorld(
   }
 
   for (const e of sim.enemies) {
+    if (e.fade < 0) continue;
     const img = enemyFrame(art, e, sim.t);
     if (!img) continue;
-    const squash = e.stun > 0 ? 0.82 : 1;
+    const fading = e.fade > 0;
+    const alpha = fading ? Math.max(0, e.fade / 0.42) : 1;
+    const squash = fading ? 0.35 + 0.65 * alpha : 1;
+    ctx.save();
+    ctx.globalAlpha = alpha;
     if (e.kind === "bubble") {
-      const s = 78;
-      ctx.save();
+      const s = 78 * (fading ? 0.7 + 0.3 * alpha : 1);
       ctx.translate(e.x + e.w / 2, e.y + e.h / 2);
-      ctx.scale(e.dir > 0 ? -1 : 1, squash);
-      ctx.globalAlpha = e.stun > 0 ? 0.7 : 0.95;
+      ctx.scale((e.dir > 0 ? -1 : 1) * squash, squash);
       ctx.drawImage(img, -s / 2, -s / 2, s, s);
-      ctx.restore();
     } else {
-      const s = e.kind === "duck" ? 96 : 100;
+      const s = (e.kind === "duck" ? 96 : 100) * (fading ? 0.75 + 0.25 * alpha : 1);
       blit(ctx, img, e.x + e.w / 2, e.y + e.h + 8, s, e.dir > 0 ? -1 : 1, 1, squash);
     }
-    if (e.stun > 0 && art.star) {
-      ctx.drawImage(art.star, e.x + e.w / 2 - 8, e.y - 22 + Math.sin(sim.t * 8) * 2, 18, 18);
-    }
+    ctx.restore();
   }
 
   const p = sim.player;

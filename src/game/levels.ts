@@ -47,6 +47,7 @@ function foe(
     hop: 0.4,
     homeY: homeY ?? floor - h,
     floor,
+    fade: 0,
   };
 }
 
