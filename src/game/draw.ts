@@ -1,6 +1,6 @@
 import type { Art } from "@/game/assets";
 import type { Sim } from "@/game/sim";
-import type { Enemy, Solid } from "@/game/types";
+import type { Enemy, Solid, Theme } from "@/game/types";
 import { PH, PW, VIEW_H, VIEW_W } from "@/game/types";
 
 const THEME = {
@@ -92,7 +92,7 @@ const THEME = {
     rug: "rgba(255,255,255,0.35)",
     wood: "#7eb8ae",
   },
-} as const;
+} as const satisfies Record<Theme, unknown>;
 
 function frameAt(list: (HTMLImageElement | null)[], t: number, fps: number) {
   const ready = list.filter((img): img is HTMLImageElement => !!img);
@@ -106,7 +106,52 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.roundRect(x, y, w, h, Math.min(r, w / 2, h / 2));
 }
 
-function drawBackdrop(ctx: CanvasRenderingContext2D, sim: Sim, camX: number, camY: number) {
+function drawStar5(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = (Math.PI * 2 * i) / 10 - Math.PI / 2;
+    const d = i % 2 === 0 ? r : r * 0.45;
+    ctx.lineTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawHeartShape(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + r * 0.4);
+  ctx.bezierCurveTo(cx - r, cy - r * 0.3, cx - r * 0.5, cy - r, cx, cy - r * 0.5);
+  ctx.bezierCurveTo(cx + r * 0.5, cy - r, cx + r, cy - r * 0.3, cx, cy + r * 0.4);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawBackdrop(
+  ctx: CanvasRenderingContext2D,
+  sim: Sim,
+  art: Art,
+  camX: number,
+  camY: number,
+) {
+  const bg = art.bg[sim.theme];
+  if (bg && bg.complete && bg.naturalWidth > 0) {
+    const iw = VIEW_H * (bg.width / bg.height);
+    let x = -((camX * 0.28) % iw);
+    if (x > 0) x -= iw;
+    const yOff = -Math.round(camY * 0.12);
+    for (; x < VIEW_W + 2; x += iw - 1) {
+      ctx.drawImage(bg, Math.floor(x), yOff, Math.ceil(iw + 1), VIEW_H);
+    }
+    // Very gentle ambient wash for maximum contrast of gameplay platforms and bear
+    const wash = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+    wash.addColorStop(0, "rgba(255,255,255,0.04)");
+    wash.addColorStop(0.7, "rgba(255,255,255,0.12)");
+    wash.addColorStop(1, "rgba(255,255,255,0.32)");
+    ctx.fillStyle = wash;
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    return;
+  }
+
   const theme = THEME[sim.theme];
   const sky = ctx.createLinearGradient(0, 0, 0, VIEW_H);
   sky.addColorStop(0, theme.sky0);
@@ -241,65 +286,78 @@ function drawBackdrop(ctx: CanvasRenderingContext2D, sim: Sim, camX: number, cam
   ctx.restore();
 }
 
-function drawRoom(ctx: CanvasRenderingContext2D, sim: Sim, camX: number) {
+function drawRoom(ctx: CanvasRenderingContext2D, sim: Sim, art: Art, camX: number) {
   const theme = THEME[sim.theme];
   const y = sim.groundY;
-  ctx.fillStyle = theme.wainscot;
-  ctx.fillRect(0, y - 118, sim.w, 118);
-  ctx.fillStyle = "rgba(255,250,244,0.7)";
-  ctx.fillRect(0, y - 112, sim.w, 6);
+  const hasBg = !!(art.bg[sim.theme] && art.bg[sim.theme]!.complete && art.bg[sim.theme]!.naturalWidth > 0);
 
   const left = Math.max(0, camX - 80);
   const right = Math.min(sim.w, camX + VIEW_W + 80);
-  if (sim.theme === "salotto") {
-    for (let x = 260; x < sim.w; x += 820) {
-      if (x < left - 100 || x > right) continue;
-      ctx.fillStyle = "#5c4032";
-      ctx.fillRect(x + 18, y - 250, 8, 150);
-      ctx.fillStyle = "#3f6b45";
-      ctx.beginPath();
-      ctx.arc(x + 22, y - 250, 28, 0, Math.PI * 2);
-      ctx.arc(x + 4, y - 232, 18, 0, Math.PI * 2);
-      ctx.arc(x + 40, y - 228, 16, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#c4784a";
-      roundRect(ctx, x, y - 108, 48, 36, 6);
-      ctx.fill();
+
+  if (!hasBg) {
+    ctx.fillStyle = theme.wainscot;
+    ctx.fillRect(0, y - 118, sim.w, 118);
+    ctx.fillStyle = "rgba(255,250,244,0.7)";
+    ctx.fillRect(0, y - 112, sim.w, 6);
+
+    if (sim.theme === "salotto") {
+      for (let x = 260; x < sim.w; x += 820) {
+        if (x < left - 100 || x > right) continue;
+        ctx.fillStyle = "#5c4032";
+        ctx.fillRect(x + 18, y - 250, 8, 150);
+        ctx.fillStyle = "#3f6b45";
+        ctx.beginPath();
+        ctx.arc(x + 22, y - 250, 28, 0, Math.PI * 2);
+        ctx.arc(x + 4, y - 232, 18, 0, Math.PI * 2);
+        ctx.arc(x + 40, y - 228, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#c4784a";
+        roundRect(ctx, x, y - 108, 48, 36, 6);
+        ctx.fill();
+      }
+    } else if (sim.theme === "cucina") {
+      for (let x = 220; x < sim.w; x += 520) {
+        if (x < left - 80 || x > right) continue;
+        ctx.fillStyle = "#f7f1e6";
+        roundRect(ctx, x, y - 168, 70, 56, 8);
+        ctx.fill();
+        ctx.fillStyle = "#e23b3b";
+        ctx.beginPath();
+        ctx.arc(x + 22, y - 140, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#f2c14e";
+        ctx.beginPath();
+        ctx.arc(x + 46, y - 136, 9, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (sim.theme === "cameretta") {
+      for (let x = 300; x < sim.w; x += 700) {
+        if (x < left - 80 || x > right) continue;
+        ctx.fillStyle = "rgba(255,250,244,0.7)";
+        roundRect(ctx, x, y - 210, 90, 70, 8);
+        ctx.fill();
+        ctx.fillStyle = "rgba(186,214,232,0.65)";
+        ctx.fillRect(x + 8, y - 202, 74, 46);
+        ctx.fillStyle = "#e7a0b8";
+        roundRect(ctx, x + 120, y - 96, 54, 28, 8);
+        ctx.fill();
+      }
+    } else if (sim.theme === "corridoio") {
+      ctx.fillStyle = "rgba(255,250,244,0.28)";
+      for (let x = 160; x < sim.w; x += 360) {
+        if (x < left - 40 || x > right) continue;
+        roundRect(ctx, x, y - 230, 22, 90, 8);
+        ctx.fill();
+      }
     }
-  } else if (sim.theme === "cucina") {
-    for (let x = 220; x < sim.w; x += 520) {
-      if (x < left - 80 || x > right) continue;
-      ctx.fillStyle = "#f7f1e6";
-      roundRect(ctx, x, y - 168, 70, 56, 8);
-      ctx.fill();
-      ctx.fillStyle = "#e23b3b";
-      ctx.beginPath();
-      ctx.arc(x + 22, y - 140, 10, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#f2c14e";
-      ctx.beginPath();
-      ctx.arc(x + 46, y - 136, 9, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  } else if (sim.theme === "cameretta") {
-    for (let x = 300; x < sim.w; x += 700) {
-      if (x < left - 80 || x > right) continue;
-      ctx.fillStyle = "rgba(255,250,244,0.7)";
-      roundRect(ctx, x, y - 210, 90, 70, 8);
-      ctx.fill();
-      ctx.fillStyle = "rgba(186,214,232,0.65)";
-      ctx.fillRect(x + 8, y - 202, 74, 46);
-      ctx.fillStyle = "#e7a0b8";
-      roundRect(ctx, x + 120, y - 96, 54, 28, 8);
-      ctx.fill();
-    }
-  } else if (sim.theme === "corridoio") {
-    ctx.fillStyle = "rgba(255,250,244,0.28)";
-    for (let x = 160; x < sim.w; x += 360) {
-      if (x < left - 40 || x > right) continue;
-      roundRect(ctx, x, y - 230, 22, 90, 8);
-      ctx.fill();
-    }
+  } else {
+    // Elegant skirting board (battiscopa) at wall base
+    ctx.fillStyle = theme.wainscot;
+    ctx.fillRect(0, y - 16, sim.w, 16);
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.fillRect(0, y - 16, sim.w, 4);
+    ctx.fillStyle = "rgba(70,40,20,0.12)";
+    ctx.fillRect(0, y - 2, sim.w, 2);
   }
 
   const floor = ctx.createLinearGradient(0, y, 0, y + 180);
@@ -499,6 +557,9 @@ function blit(
 }
 
 function enemyFrame(art: Art, e: Enemy, t: number) {
+  if (e.kind === "tomato" && art.tomato) return art.tomato;
+  if (e.kind === "slipper" && art.slipper) return art.slipper;
+  if (e.kind === "sock" && art.sock) return art.sock;
   if (e.kind === "tomato" || e.kind === "slipper" || e.kind === "sock") return null;
   const list = art[e.kind];
   const fps = e.stun > 0 ? 3 : e.kind === "bubble" ? 6 : 8;
@@ -637,14 +698,14 @@ export function renderWorld(
   camX: number,
   camY: number,
 ) {
-  drawBackdrop(ctx, sim, camX, camY);
+  drawBackdrop(ctx, sim, art, camX, camY);
 
   const shake = sim.gentle ? 0 : sim.shake;
   const ox = shake ? (Math.random() - 0.5) * shake : 0;
   const oy = shake ? (Math.random() - 0.5) * shake : 0;
   ctx.save();
   ctx.translate(-Math.round(camX + ox), -Math.round(camY + oy));
-  drawRoom(ctx, sim, camX);
+  drawRoom(ctx, sim, art, camX);
   drawFloorTricks(ctx, sim);
 
   for (const s of sim.solids) {
@@ -693,6 +754,30 @@ export function renderWorld(
     ctx.drawImage(img, item.x + 21 - iw / 2, item.y + bob, iw, ih);
   }
 
+  /* ── Secret collectible (Golden Duck) ── */
+  if (sim.secret && !sim.secret.got) {
+    const sc = sim.secret;
+    const bob = Math.sin(sim.t * 3.2 + sc.x * 0.1) * 4;
+    const glow = 0.55 + 0.3 * Math.sin(sim.t * 4);
+    ctx.save();
+    ctx.globalAlpha = glow;
+    ctx.fillStyle = "rgba(255,215,0,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(sc.x + sc.w / 2, sc.y + sc.h / 2 + bob, 32, 32, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    if (art.goldduck) {
+      const dh = 54;
+      const dw = dh * (art.goldduck.width / art.goldduck.height);
+      ctx.drawImage(art.goldduck, sc.x + sc.w / 2 - dw / 2, sc.y + bob, dw, dh);
+    } else {
+      ctx.fillStyle = "#ffd700";
+      ctx.beginPath();
+      ctx.arc(sc.x + sc.w / 2, sc.y + sc.h / 2 + bob, 16, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   if (art.door) {
     const dx = sim.goal.x + sim.goal.w / 2;
     const dy = sim.goal.y + sim.goal.h;
@@ -721,6 +806,20 @@ export function renderWorld(
     const dh = 200;
     const dw = dh * (art.door.width / art.door.height);
     ctx.drawImage(art.door, sim.goal.x + sim.goal.w / 2 - dw / 2, sim.goal.y + sim.goal.h - dh, dw, dh);
+
+    if ((sim.theme === "bagno" || sim.finaleLevel) && art.toilet) {
+      const th = 130;
+      const tw = th * (art.toilet.width / art.toilet.height);
+      const tx = sim.goal.x + sim.goal.w + 14;
+      const ty = dy - th;
+      ctx.drawImage(art.toilet, tx, ty, tw, th);
+      const bob = Math.sin(sim.t * 3.5) * 3;
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.beginPath();
+      ctx.arc(tx + tw * 0.45, ty + 18 + bob, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     if (sim.finale > 0 && sim.finale < 1.4) {
       const k = Math.min(1, (1.4 - sim.finale) / 0.7);
       ctx.fillStyle = sim.theme === "bagno" ? "#d7f3ee" : "#f6efe4";
@@ -738,12 +837,11 @@ export function renderWorld(
 
   for (const e of sim.enemies) {
     if (e.fade < 0) continue;
-    if (e.kind === "tomato" || e.kind === "slipper" || e.kind === "sock") {
+    const img = enemyFrame(art, e, sim.t);
+    if (!img) {
       drawCritter(ctx, e, sim.t);
       continue;
     }
-    const img = enemyFrame(art, e, sim.t);
-    if (!img) continue;
     const fading = e.fade > 0;
     const alpha = fading ? Math.max(0, e.fade / 0.42) : 1;
     const squash = fading ? 0.35 + 0.65 * alpha : 1;
@@ -754,6 +852,10 @@ export function renderWorld(
       ctx.translate(e.x + e.w / 2, e.y + e.h / 2);
       ctx.scale((e.dir > 0 ? -1 : 1) * squash, squash);
       ctx.drawImage(img, -s / 2, -s / 2, s, s);
+    } else if (e.kind === "tomato" || e.kind === "slipper" || e.kind === "sock") {
+      const s = 68 * (fading ? 0.75 + 0.25 * alpha : 1);
+      const bob = Math.sin(sim.t * 5 + e.phase) * 1.5;
+      blit(ctx, img, e.x + e.w / 2, e.y + e.h + 4 + bob, s, e.dir > 0 ? -1 : 1, 1, squash);
     } else {
       const s = (e.kind === "duck" ? 96 : 100) * (fading ? 0.75 + 0.25 * alpha : 1);
       blit(ctx, img, e.x + e.w / 2, e.y + e.h + 8, s, e.dir > 0 ? -1 : 1, 1, squash);
@@ -819,12 +921,73 @@ export function renderWorld(
     ctx.fill();
   }
 
+  /* ── Wait indicator: "Tocca!" when bear pauses before danger ── */
+  if (!inside && p.wait > 0.6) {
+    const bx = p.x + PW / 2;
+    const by = p.y - 44 + Math.sin(sim.t * 7) * 5;
+    const fade = Math.min(1, (p.wait - 0.6) * 3);
+    ctx.save();
+    ctx.globalAlpha = fade * (0.7 + 0.3 * Math.sin(sim.t * 5));
+    ctx.fillStyle = "rgba(255,250,240,0.92)";
+    roundRect(ctx, bx - 42, by - 16, 84, 32, 14);
+    ctx.fill();
+    ctx.strokeStyle = "#e8904a";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = "#d06020";
+    ctx.font = '700 17px "Nunito","Fredoka One",sans-serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Tocca! 👆", bx, by);
+    ctx.restore();
+  }
+
+  /* ── Combo indicator ── */
+  if (!inside && p.combo >= 3 && p.comboT > 0) {
+    const cx = p.x + PW / 2;
+    const cy = p.y - 60;
+    const alpha = Math.min(1, p.comboT * 3);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = "#ff8c00";
+    ctx.font = '900 22px "Nunito","Fredoka One",sans-serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`x${p.combo}!`, cx, cy - 6);
+    ctx.restore();
+  }
+
   for (const part of sim.particles) {
+    ctx.save();
     ctx.globalAlpha = Math.max(0, part.life / part.max);
     ctx.fillStyle = part.color;
-    ctx.beginPath();
-    ctx.arc(part.x, part.y, part.r, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.translate(part.x, part.y);
+    if (part.spin) ctx.rotate(part.spin * sim.t);
+    if (part.shape === "star") {
+      drawStar5(ctx, 0, 0, part.r);
+    } else if (part.shape === "heart") {
+      drawHeartShape(ctx, 0, 0, part.r);
+    } else if (part.shape === "ring") {
+      ctx.strokeStyle = part.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, part.r, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (part.shape === "bubble") {
+      ctx.globalAlpha *= 0.6;
+      ctx.beginPath();
+      ctx.arc(0, 0, part.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.beginPath();
+      ctx.arc(-part.r * 0.25, -part.r * 0.3, part.r * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(0, 0, part.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
   ctx.globalAlpha = 1;
   ctx.restore();

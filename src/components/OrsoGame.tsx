@@ -584,7 +584,12 @@ export function OrsoGame() {
         {mode === "win" && win ? (
           <div className="pointer-events-auto absolute inset-0 z-40 grid place-items-center overflow-y-auto bg-cocoa/35 p-4">
             <div className="w-full max-w-sm rounded-card bg-foam px-6 py-6 text-center shadow-lg">
-              <img src={asset("/sprites/bear/idle-2.png")} alt="" className="floaty mx-auto h-24 w-auto" />
+              <div className="mx-auto flex items-center justify-center gap-3">
+                <img src={asset("/sprites/bear/idle-2.png")} alt="" className="floaty h-24 w-auto" />
+                {win.index === 7 ? (
+                  <img src={asset("/sprites/toilet.png")} alt="Il bagno!" className="h-24 w-auto animate-bounce" />
+                ) : null}
+              </div>
               <h2 className="font-display text-4xl">{win.title}</h2>
               <p className="mt-2 text-lg leading-snug">{win.text}</p>
               <p className="mt-3 font-display text-2xl text-gold">Stelline {win.stars}</p>
@@ -635,11 +640,16 @@ export function OrsoGame() {
                 {panel === 0 ? <span className="absolute bottom-8 left-1/2 h-10 w-10 -translate-x-1/2 rounded-full bg-peach/75 animate-pulse" /> : null}
                 {panel === 1 ? <img src={asset("/sprites/powder.png")} alt="" className="absolute bottom-8 right-6 h-20 w-auto" /> : null}
                 {panel >= 2 ? (
-                  <img
-                    src={asset("/sprites/door.png")}
-                    alt=""
-                    className={`absolute bottom-0 right-2 w-auto transition-all duration-500 ${panel === 3 ? "h-40" : "h-16 opacity-80"}`}
-                  />
+                  <div className={`absolute bottom-0 right-2 flex items-end gap-1 transition-all duration-500 ${panel === 3 ? "scale-100" : "scale-75 opacity-80"}`}>
+                    <img
+                      src={asset("/sprites/door.png")}
+                      alt=""
+                      className={panel === 3 ? "h-36 w-auto" : "h-20 w-auto"}
+                    />
+                    {panel === 3 ? (
+                      <img src={asset("/sprites/toilet.png")} alt="" className="h-28 w-auto -ml-3" />
+                    ) : null}
+                  </div>
                 ) : null}
               </div>
               <div className="flex gap-2" aria-hidden>

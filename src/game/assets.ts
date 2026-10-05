@@ -1,3 +1,5 @@
+import type { Theme } from "@/game/types";
+
 export type Art = {
   idle: (HTMLImageElement | null)[];
   run: (HTMLImageElement | null)[];
@@ -16,11 +18,12 @@ export type Art = {
   pillow: HTMLImageElement | null;
   bench: HTMLImageElement | null;
   mat: HTMLImageElement | null;
-  bg: {
-    salotto: HTMLImageElement | null;
-    corridoio: HTMLImageElement | null;
-    bagno: HTMLImageElement | null;
-  };
+  tomato: HTMLImageElement | null;
+  slipper: HTMLImageElement | null;
+  sock: HTMLImageElement | null;
+  goldduck: HTMLImageElement | null;
+  toilet: HTMLImageElement | null;
+  bg: Record<Theme, HTMLImageElement | null>;
 };
 
 export function asset(src: string) {
@@ -42,47 +45,49 @@ function seq(prefix: string, name: string, n = 4) {
 }
 
 export async function loadArt(): Promise<Art> {
-  const [idle, run, jump, sponge, roll, bubble, duck, star, powder, ring, brush, heart, door, lamp, pillow, bench, mat, salotto, corridoio, bagno] =
-    await Promise.all([
-      seq("/sprites/bear", "idle"),
-      seq("/sprites/bear", "run"),
-      seq("/sprites/bear", "jump"),
-      seq("/sprites/sponge", "sponge"),
-      seq("/sprites/roll", "roll"),
-      seq("/sprites/bubble", "bubble"),
-      seq("/sprites/duck", "duck"),
-      load("/sprites/star.png"),
-      load("/sprites/powder.png"),
-      load("/sprites/ring.png"),
-      load("/sprites/brush.png"),
-      load("/sprites/heart.png"),
-      load("/sprites/door.png"),
-      load("/sprites/lamp.png"),
-      load("/sprites/pillow.png"),
-      load("/sprites/bench.png"),
-      load("/sprites/mat.png"),
-      load("/bg/salotto.jpg"),
-      load("/bg/corridoio.jpg"),
-      load("/bg/bagno.jpg"),
-    ]);
+  const [
+    idle, run, jump,
+    sponge, roll, bubble, duck,
+    star, powder, ring, brush, heart, door, lamp, pillow, bench, mat,
+    tomato, slipper, sock, goldduck, toilet,
+    salotto, corridoio, bagno, cucina, giardino, lavanderia, cameretta, terrazzo,
+  ] = await Promise.all([
+    seq("/sprites/bear", "idle"),
+    seq("/sprites/bear", "run"),
+    seq("/sprites/bear", "jump"),
+    seq("/sprites/sponge", "sponge"),
+    seq("/sprites/roll", "roll"),
+    seq("/sprites/bubble", "bubble"),
+    seq("/sprites/duck", "duck"),
+    load("/sprites/star.png"),
+    load("/sprites/powder.png"),
+    load("/sprites/ring.png"),
+    load("/sprites/brush.png"),
+    load("/sprites/heart.png"),
+    load("/sprites/door.png"),
+    load("/sprites/lamp.png"),
+    load("/sprites/pillow.png"),
+    load("/sprites/bench.png"),
+    load("/sprites/mat.png"),
+    load("/sprites/tomato.png"),
+    load("/sprites/slipper.png"),
+    load("/sprites/sock.png"),
+    load("/sprites/goldduck.png"),
+    load("/sprites/toilet.png"),
+    load("/bg/salotto.jpg"),
+    load("/bg/corridoio.jpg"),
+    load("/bg/bagno.jpg"),
+    load("/bg/cucina.jpg"),
+    load("/bg/giardino.jpg"),
+    load("/bg/lavanderia.jpg"),
+    load("/bg/cameretta.jpg"),
+    load("/bg/terrazzo.jpg"),
+  ]);
   return {
-    idle,
-    run,
-    jump,
-    sponge,
-    roll,
-    bubble,
-    duck,
-    star,
-    powder,
-    ring,
-    brush,
-    heart,
-    door,
-    lamp,
-    pillow,
-    bench,
-    mat,
-    bg: { salotto, corridoio, bagno },
+    idle, run, jump,
+    sponge, roll, bubble, duck,
+    star, powder, ring, brush, heart, door, lamp, pillow, bench, mat,
+    tomato, slipper, sock, goldduck, toilet,
+    bg: { salotto, corridoio, bagno, cucina, giardino, lavanderia, cameretta, terrazzo },
   };
 }
