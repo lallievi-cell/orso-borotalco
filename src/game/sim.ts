@@ -245,11 +245,14 @@ function resolveX(sim: SimState, x: number) {
     if (!solidOn(s, sim.t)) continue;
     if (s.oneWay) continue;
     if (!hit(x, p.y, PW, PH, s)) continue;
+
+    // Gradino superabile solo se si cammina (a terra e non in volo)
     const rise = p.y + PH - s.y;
-    if (rise > 0 && rise <= STEP_UP + 6 && p.y < s.y) {
-      if (p.vy >= 0) p.y -= rise;
+    if (rise > 0 && rise <= STEP_UP && p.grounded && p.vy >= 0) {
+      p.y -= rise;
       continue;
     }
+
     if (p.vx > 0) x = Math.min(x, s.x - PW);
     else if (p.vx < 0) x = Math.max(x, s.x + s.w);
     else {
@@ -272,26 +275,59 @@ function resolveX(sim: SimState, x: number) {
   return { x, blocked };
 }
 
-function resolveY(sim: SimState, y: number, prevBottom: number, prevVy: number) {
+function resolveY(sim: SimState, y: number, prevY: number, prevVy: number) {
   const p = sim.player;
+  const prevBottom = prevY + PH;
+  const prevTop = prevY;
   let grounded = false;
   let bounced: Solid | null = null;
+
   for (const s of sim.solids) {
     if (!solidOn(s, sim.t)) continue;
     if (!hit(p.x, y, PW, PH, s)) continue;
+
     if (s.oneWay) {
-      if (p.drop > 0 || p.vy < 0 || prevBottom > s.y + 1) continue;
-    }
-    if (p.vy > 0 || prevBottom <= s.y + 2) {
+      if (p.drop > 0 || p.vy < 0 || prevBottom > s.y + 4) continue;
       y = s.y - PH;
       if (s.bounce && prevVy > 70) bounced = s;
       else p.vy = 0;
       grounded = true;
-    } else {
+      continue;
+    }
+
+    // Ostacoli solidi (cubi, siepi, pavimento, piattaforme)
+    const isFalling = p.vy >= 0;
+    const wasAbove = prevBottom <= s.y + 14;
+    const restsOnGround = s.y + s.h >= sim.groundY;
+
+    // Se l'ostacolo poggia sul pavimento o l'orso sta atterrando/viene dall'alto: atterra sopra
+    if (isFalling || wasAbove || restsOnGround) {
+      y = s.y - PH;
+      if (s.bounce && prevVy > 70) bounced = s;
+      else p.vy = 0;
+      grounded = true;
+    } else if (p.vy < 0 && prevTop >= s.y + s.h - 6 && !restsOnGround) {
+      // Ha battuto la testa da sotto su una piattaforma sospesa
       y = s.y + s.h;
       p.vy = 0;
+    } else {
+      // Fallback sicuro: atterra in cima, non spingere mai sotto terra
+      y = s.y - PH;
+      p.vy = 0;
+      grounded = true;
     }
   }
+
+  // Barriera invalicabile: l'orso non può mai sprofondare sotto il pavimento se c'è terra sotto di lui
+  if (sim.groundY && y > sim.groundY - PH && p.x >= 0 && p.x <= sim.w) {
+    const hasGround = sim.solids.some((s) => s.kind === "ground" && p.x + PW > s.x && p.x < s.x + s.w);
+    if (hasGround) {
+      y = sim.groundY - PH;
+      p.vy = 0;
+      grounded = true;
+    }
+  }
+
   return { y, grounded, bounced };
 }
 
@@ -524,7 +560,7 @@ export function step(sim: SimState, input: Input, dt: number): StepEvents {
 
   const yBefore = p.y;
   const prevVy = p.vy;
-  const moved = resolveY(sim, p.y + p.vy * dt, yBefore + PH, prevVy);
+  const moved = resolveY(sim, p.y + p.vy * dt, yBefore, prevVy);
   p.y = moved.y;
   p.grounded = moved.grounded && !moved.bounced;
   if (moved.bounced) {
