@@ -509,13 +509,22 @@ export function step(sim: SimState, input: Input, dt: number): StepEvents {
     Math.abs(p.y + PH - sim.groundY) < 28 &&
     sim.slips.some((s) => mid > s.x && mid < s.x + s.w);
   const cap = p.speed > 0 ? FAST : input.auto ? AUTO_WALK : RUN;
-  const accel = sliding ? 280 : wasGrounded ? 2200 : 1400;
-  if (ix !== 0) {
-    p.vx += ix * accel * dt;
-    if (p.vx > cap) p.vx = Math.max(cap, p.vx - 1400 * dt);
-    if (p.vx < -cap) p.vx = Math.min(-cap, p.vx + 1400 * dt);
-  } else if (sliding) {
-    p.vx *= Math.max(0, 1 - 0.35 * dt);
+  const targetVx = ix * cap;
+
+  if (sliding) {
+    if (ix !== 0) {
+      p.vx += ix * 280 * dt;
+      p.vx = Math.max(-cap, Math.min(cap, p.vx));
+    } else {
+      p.vx *= Math.max(0, 1 - 0.35 * dt);
+    }
+  } else if (ix !== 0) {
+    const accel = wasGrounded ? 2200 : 1400;
+    if (p.vx < targetVx) {
+      p.vx = Math.min(targetVx, p.vx + accel * dt);
+    } else if (p.vx > targetVx) {
+      p.vx = Math.max(targetVx, p.vx - accel * dt);
+    }
   } else if (wasGrounded) {
     const f = 2000 * dt;
     if (Math.abs(p.vx) <= f) p.vx = 0;
