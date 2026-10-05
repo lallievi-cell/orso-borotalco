@@ -881,8 +881,8 @@ export function renderWorld(
   let sprite = frameAt(art.idle, p.anim, 3.2);
   if (!p.grounded) {
     sprite = p.vy < -160 ? frameAt(art.jump, 1, 1) : p.vy < 120 ? frameAt(art.jump, 2, 1) : frameAt(art.jump, 3, 1);
-  } else if (Math.abs(p.vx) > 24) {
-    const fps = p.speed > 0 ? 13 : 10;
+  } else if (Math.abs(p.vx) > 20) {
+    const fps = p.speed > 0 ? 9.5 : 6.5;
     sprite = frameAt(art.run, p.anim, fps);
   }
   if (!inside && sprite) {

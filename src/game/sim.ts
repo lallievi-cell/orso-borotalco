@@ -2,19 +2,19 @@ import { createLevel } from "@/game/levels";
 import { PH, PW } from "@/game/types";
 import type { Flyer, Input, Level, Particle, ParticleShape, Player, PowerKind, Rect, Solid, StepEvents } from "@/game/types";
 
-const GRAV_UP = 1380;
-const GRAV_DOWN = 2400;
-const GRAV_APEX = 680;
-const JUMP = -820;
-const JUMP_POWDER = -960;
-const MAX_FALL = 800;
-const RUN = 250;
-const FAST = 372;
-/** Camminata automatica sul touch: più lenta, così c'è tempo per pensare. */
-const AUTO_WALK = 165;
+const GRAV_UP = 1120;
+const GRAV_DOWN = 1580;
+const GRAV_APEX = 480;
+const JUMP = -680;
+const JUMP_POWDER = -800;
+const MAX_FALL = 620;
+const RUN = 145;
+const FAST = 205;
+/** Camminata automatica: andatura dolce, tranquilla e pacioccona per una bimba di 5 anni. */
+const AUTO_WALK = 115;
 const STEP_UP = 38;
 /** Distanza a cui l'orso si ferma da solo davanti a un nemico (solo camminata automatica). */
-const CAUTION = 120;
+const CAUTION = 110;
 const INTRO = 1.5;
 
 type SimState = {
@@ -508,16 +508,16 @@ export function step(sim: SimState, input: Input, dt: number): StepEvents {
     wasGrounded &&
     Math.abs(p.y + PH - sim.groundY) < 28 &&
     sim.slips.some((s) => mid > s.x && mid < s.x + s.w);
-  const cap = p.speed > 0 ? FAST : input.auto && wasGrounded ? AUTO_WALK : RUN;
-  const accel = sliding ? 360 : wasGrounded ? 3400 : 2200;
+  const cap = p.speed > 0 ? FAST : input.auto ? AUTO_WALK : RUN;
+  const accel = sliding ? 280 : wasGrounded ? 2200 : 1400;
   if (ix !== 0) {
     p.vx += ix * accel * dt;
-    if (p.vx > cap) p.vx = Math.max(cap, p.vx - 1800 * dt);
-    if (p.vx < -cap) p.vx = Math.min(-cap, p.vx + 1800 * dt);
+    if (p.vx > cap) p.vx = Math.max(cap, p.vx - 1400 * dt);
+    if (p.vx < -cap) p.vx = Math.min(-cap, p.vx + 1400 * dt);
   } else if (sliding) {
     p.vx *= Math.max(0, 1 - 0.35 * dt);
   } else if (wasGrounded) {
-    const f = 2200 * dt;
+    const f = 2000 * dt;
     if (Math.abs(p.vx) <= f) p.vx = 0;
     else p.vx -= Math.sign(p.vx) * f;
   } else {
