@@ -443,7 +443,7 @@ function drawSetPiece(ctx: CanvasRenderingContext2D, s: Solid, t: number) {
   }
   const on = pieceOn(s, t);
   ctx.save();
-  ctx.globalAlpha = on ? 0.92 : 0.22;
+  ctx.globalAlpha = on ? 0.94 : 0.22;
   const bob = Math.sin(t * 3 + s.x) * 3;
   ctx.fillStyle = "rgba(255,255,255,0.85)";
   ctx.beginPath();
@@ -452,10 +452,29 @@ function drawSetPiece(ctx: CanvasRenderingContext2D, s: Solid, t: number) {
   ctx.strokeStyle = "rgba(150,210,230,0.9)";
   ctx.lineWidth = 3;
   ctx.stroke();
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
-  ctx.beginPath();
-  ctx.arc(s.x + s.w * 0.35, s.y + 4 + bob, 4, 0, Math.PI * 2);
-  ctx.fill();
+
+  // Faccina sorridente e simpatica sulle bolle
+  if (on) {
+    const cx = s.x + s.w / 2;
+    const cy = s.y + s.h / 2 + bob;
+    ctx.strokeStyle = "#5a9ab8";
+    ctx.lineWidth = 2;
+    // Occhietti sorridenti ^ ^
+    ctx.beginPath();
+    ctx.arc(cx - 16, cy - 2, 4, Math.PI, 0);
+    ctx.arc(cx + 16, cy - 2, 4, Math.PI, 0);
+    ctx.stroke();
+    // Boccuccia
+    ctx.beginPath();
+    ctx.arc(cx, cy + 2, 5, 0.2, Math.PI - 0.2);
+    ctx.stroke();
+    // Guanciotte rosa
+    ctx.fillStyle = "rgba(255, 170, 190, 0.55)";
+    ctx.beginPath();
+    ctx.arc(cx - 24, cy + 2, 3.5, 0, Math.PI * 2);
+    ctx.arc(cx + 24, cy + 2, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -497,6 +516,43 @@ function drawPlatform(ctx: CanvasRenderingContext2D, s: Solid, t: number) {
     ctx.lineTo(s.x + s.w / 2 + 11, s.y - 4);
     ctx.closePath();
     ctx.fill();
+  } else if (s.kind === "blocks") {
+    // Cubo giocattolo in legno pastello con bordi arrotondati e lettere/simboli A, B, C, ★
+    const n = Math.max(1, Math.round(s.w / 48));
+    const bw = s.w / n;
+    const colors = ["#f8b4c0", "#9ed9c8", "#fed776", "#a8d4ff"];
+    const labels = ["A", "B", "C", "★", "♥"];
+    for (let i = 0; i < n; i++) {
+      const bx = s.x + i * bw + 2;
+      const by = s.y + 2;
+      const bWidth = bw - 4;
+      const bHeight = s.h - 2;
+      const col = colors[(Math.floor(s.x * 0.05) + i) % colors.length]!;
+
+      // Ombra inferiore 3D
+      ctx.fillStyle = "rgba(0,0,0,0.12)";
+      roundRect(ctx, bx, by + 4, bWidth, bHeight, 10);
+      ctx.fill();
+
+      // Blocco principale
+      ctx.fillStyle = col;
+      roundRect(ctx, bx, by, bWidth, bHeight, 10);
+      ctx.fill();
+
+      // Bordo interno satinato
+      ctx.strokeStyle = "rgba(255,255,255,0.7)";
+      ctx.lineWidth = 2.5;
+      roundRect(ctx, bx + 3, by + 3, bWidth - 6, bHeight - 6, 7);
+      ctx.stroke();
+
+      // Lettera o simbolo inciso
+      const lbl = labels[(Math.floor(s.x * 0.03) + i) % labels.length]!;
+      ctx.fillStyle = "#ffffff";
+      ctx.font = '900 24px "Fredoka", "Nunito", sans-serif';
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(lbl, bx + bWidth / 2, by + bHeight / 2 + 1);
+    }
   } else if (s.kind === "bench") {
     ctx.fillStyle = "#a8683c";
     ctx.fillRect(s.x + 10, s.y + s.h - 4, 10, 16);
@@ -909,6 +965,17 @@ export function renderWorld(
     ctx.restore();
   }
 
+  /* ── Happy reaction (cuoricino felice quando prende stelline/salta) ── */
+  if (!inside && p.happy > 0) {
+    const hx = p.x + PW / 2;
+    const hy = p.y - 32 - (1 - Math.min(1, p.happy / 0.8)) * 14;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, p.happy * 2.2);
+    ctx.fillStyle = "#ff6584";
+    drawHeartShape(ctx, hx, hy, 11);
+    ctx.restore();
+  }
+
   if (!inside && sim.levelIndex === 0 && sim.t < 8 && p.x < 420) {
     const ax = p.x + 110;
     const ay = p.y + 8 + Math.sin(sim.t * 6) * 6;
@@ -981,6 +1048,17 @@ export function renderWorld(
       ctx.fillStyle = "rgba(255,255,255,0.5)";
       ctx.beginPath();
       ctx.arc(-part.r * 0.25, -part.r * 0.3, part.r * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (part.shape === "paw") {
+      // Impronta di zampetta di borotalco soffice
+      ctx.fillStyle = part.color;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, part.r, part.r * 0.72, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(-part.r * 0.65, -part.r * 0.75, part.r * 0.34, 0, Math.PI * 2);
+      ctx.arc(0, -part.r * 1.05, part.r * 0.36, 0, Math.PI * 2);
+      ctx.arc(part.r * 0.65, -part.r * 0.75, part.r * 0.34, 0, Math.PI * 2);
       ctx.fill();
     } else {
       ctx.beginPath();

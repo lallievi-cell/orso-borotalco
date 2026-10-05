@@ -85,7 +85,7 @@ export type Player = {
   happy: number;
 };
 
-export type ParticleShape = "dot" | "star" | "heart" | "ring" | "bubble";
+export type ParticleShape = "dot" | "star" | "heart" | "ring" | "bubble" | "paw";
 
 export type Particle = {
   x: number;

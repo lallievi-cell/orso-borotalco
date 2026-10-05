@@ -588,13 +588,27 @@ export function step(sim: SimState, input: Input, dt: number): StepEvents {
   }
   if (p.grounded) p.jumpCut = false;
 
-  if (wasGrounded && p.grounded && Math.abs(p.vx) > 90 && Math.random() < dt * 10) {
-    puff(sim, p.x + PW / 2 - p.facing * 14, p.y + PH, "#f6e3d4", 1, 30);
+  if (wasGrounded && p.grounded && Math.abs(p.vx) > 30) {
+    if (Math.random() < dt * 5) {
+      sim.particles.push({
+        x: p.x + PW / 2 - p.facing * 12,
+        y: p.y + PH - 3,
+        vx: 0,
+        vy: 0,
+        life: 2.8,
+        max: 2.8,
+        r: 5.5,
+        color: p.powder > 0 ? "rgba(255, 255, 255, 0.9)" : "rgba(255, 246, 236, 0.65)",
+        shape: "paw",
+        spin: 0,
+        grav: 0,
+      });
+    }
   }
   if (p.powder > 0 && Math.random() < dt * 16) {
     puff(sim, p.x + PW / 2, p.y + 20, "#ffffff", 1, 40, Math.random() < 0.3 ? "star" : "dot");
   }
-  if (p.speed > 0 && p.grounded && Math.abs(p.vx) > 200 && Math.random() < dt * 20) {
+  if (p.speed > 0 && p.grounded && Math.abs(p.vx) > 130 && Math.random() < dt * 20) {
     puff(sim, p.x + PW / 2 - p.facing * 20, p.y + PH - 10, "#bfe6ff", 1, 30);
   }
 
@@ -608,14 +622,14 @@ export function step(sim: SimState, input: Input, dt: number): StepEvents {
     const stomp = p.vy > 0 && prevBottom <= e.y + 26;
     if (stomp || p.powder > 0) {
       if (stomp) {
-        p.vy = input.jumpHeld ? -680 : -520;
+        p.vy = input.jumpHeld ? -620 : -480;
         p.grounded = false;
         p.jumpCut = false;
       }
       e.fade = 0.42;
       events.stomp = true;
-      p.happy = 0.5;
-      if (!sim.gentle) sim.shake = Math.max(sim.shake, 4);
+      p.happy = 0.8;
+      if (!sim.gentle) sim.shake = Math.max(sim.shake, 3);
       puff(sim, e.x + e.w / 2, e.y + e.h / 2, "#fff6ea", 10, 150, "star", 1.1);
       ring(sim, e.x + e.w / 2, e.y + e.h / 2, "#ffffff", 14);
       continue;
@@ -630,13 +644,13 @@ export function step(sim: SimState, input: Input, dt: number): StepEvents {
     if (p.invuln <= 0) {
       p.hearts -= 1;
       sim.hurts += 1;
-      p.invuln = 1.6;
-      p.vx = p.x + PW / 2 < e.x + e.w / 2 ? -240 : 240;
-      p.vy = -340;
+      p.invuln = 2.2; // Più tempo di sicurezza per la bambina
+      p.vx = p.x + PW / 2 < e.x + e.w / 2 ? -130 : 130; // Rimbalzo morbido
+      p.vy = -260;
       p.grounded = false;
       events.hurt = true;
-      if (!sim.gentle) sim.shake = Math.max(sim.shake, 7);
-      puff(sim, p.x + PW / 2, p.y + 16, "#f4b6c8", 6, 90, "heart");
+      if (!sim.gentle) sim.shake = Math.max(sim.shake, 4);
+      puff(sim, p.x + PW / 2, p.y + 16, "#f4b6c8", 8, 90, "heart");
       e.dir = e.x + e.w / 2 > p.x + PW / 2 ? 1 : -1;
       e.bump = 0.4;
       if (p.hearts <= 0) {

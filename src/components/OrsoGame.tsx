@@ -45,6 +45,25 @@ type WinInfo = {
 const ZERO: Input = { x: 0, jumpHeld: false, jumpPressed: false, down: false };
 const NAMES = ["Il salotto", "La cucina", "Il giardino", "Il corridoio", "La lavanderia", "La cameretta", "Il terrazzo", "Il bagno"];
 
+const STORY_PAGES = [
+  {
+    title: "Mamma mia che urgenza!",
+    text: "All'Orso Borotalco scappa tantissimo la cacca e deve raggiungere il bagno!",
+  },
+  {
+    title: "La nuvola magica!",
+    text: "Con una spolverata di borotalco profumato salta leggero tra cuscini e giochi!",
+  },
+  {
+    title: "Verso la porta azzurra!",
+    text: "Attraversa stanze, giardini e terrazzi superando ostacoli birichini...",
+  },
+  {
+    title: "Il bagno è vicino!",
+    text: "Corri orsetto, la tazza del water ti aspetta per il grande sollievo!",
+  },
+];
+
 const emptyHud = (): Hud => ({
   hearts: 5,
   stars: 0,
@@ -85,6 +104,7 @@ export function OrsoGame() {
   const [story, setStory] = useState(false);
   const [panel, setPanel] = useState(0);
   const [help, setHelp] = useState(false);
+  const [trophies, setTrophies] = useState(false);
   const [save, setSave] = useState<SaveData>(emptySave);
   const [muted, setMuted] = useState(false);
   const [touch, setTouch] = useState(false);
@@ -235,6 +255,21 @@ export function OrsoGame() {
           if (ev.jump) audio.jump();
           if (ev.coins) audio.coin();
           if (ev.stomp) audio.stomp();
+          if (ev.bounce) audio.bounce();
+          if (ev.bump) audio.bump();
+          if (ev.secret) {
+            audio.secret();
+            audio.speak("Evviva! Hai trovato la paperella d'oro!");
+            const next = {
+              ...b.save,
+              ducks: [...b.save.ducks],
+            };
+            next.ducks[sim.levelIndex] = true;
+            b.save = next;
+            writeSave(next);
+            setSave(next);
+          }
+          if (ev.heal) audio.heal();
           if (ev.hurt) audio.hurt();
           if (ev.checkpoint) audio.checkpoint();
           if (ev.power) audio.power();
@@ -242,10 +277,12 @@ export function OrsoGame() {
             b.mode = "win";
             setMode("win");
             audio.win();
+            audio.speak(sim.winTitle + "! " + sim.winText);
             const next = {
               ...b.save,
               best: [...b.save.best],
               cleared: [...b.save.cleared],
+              ducks: [...b.save.ducks],
             };
             next.best[sim.levelIndex] = Math.max(next.best[sim.levelIndex] ?? 0, sim.player.stars);
             next.cleared[sim.levelIndex] = true;
@@ -326,6 +363,7 @@ export function OrsoGame() {
 
   useEffect(() => {
     if (!story) return;
+    bag.current.audio?.speak(STORY_PAGES[panel]?.text ?? "");
     const id = window.setTimeout(() => {
       if (panel >= 3) {
         setStory(false);
@@ -333,7 +371,7 @@ export function OrsoGame() {
       } else {
         setPanel(panel + 1);
       }
-    }, 2600);
+    }, 3800);
     return () => window.clearTimeout(id);
   }, [story, panel]);
 
@@ -367,9 +405,13 @@ export function OrsoGame() {
     setHud(toHud(sim));
     setWin(null);
     setHelp(false);
+    setTrophies(false);
     setMode("play");
     bag.current.audio?.unlock();
     bag.current.audio?.startMusic();
+    if (sim.say) {
+      bag.current.audio?.speak(sim.say);
+    }
   }
 
   function releasePointer(id: number) {
@@ -458,7 +500,18 @@ export function OrsoGame() {
                     );
                   })}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    className="min-h-11 rounded-full bg-gold/90 px-4 font-display text-cocoa shadow-sm active:scale-95 transition-transform flex items-center gap-1.5"
+                    onClick={() => {
+                      setTrophies(true);
+                      bag.current.audio?.unlock();
+                      bag.current.audio?.secret();
+                    }}
+                  >
+                    <span>🦆</span> Paperelle ({save.ducks.filter(Boolean).length}/8)
+                  </button>
                   <button type="button" className="min-h-11 rounded-full bg-mint px-4 text-cocoa" onClick={() => setHelp(true)}>
                     Come si gioca
                   </button>
@@ -527,15 +580,41 @@ export function OrsoGame() {
         ) : null}
 
         {touch && mode === "play" ? (
-          <div className="pointer-events-none absolute inset-0 z-30 flex items-end justify-start px-[max(0.75rem,env(safe-area-inset-left))] pb-[max(0.75rem,env(safe-area-inset-bottom))] landscape:items-center">
+          <div className="pointer-events-none absolute inset-0 z-30 flex items-end justify-between px-[max(1rem,env(safe-area-inset-left))] pb-[max(1rem,env(safe-area-inset-bottom))] landscape:items-center">
             <button
               type="button"
               data-move
               aria-label="Indietro"
-              className="pointer-events-auto grid h-28 w-28 place-items-center rounded-full bg-foam/95 text-cocoa shadow-lg landscape:h-32 landscape:w-32"
+              className="pointer-events-auto grid h-24 w-24 place-items-center rounded-full bg-foam/95 text-cocoa shadow-xl landscape:h-28 landscape:w-28 active:scale-90 transition-transform border-2 border-cocoa/10"
               {...hold("ArrowLeft")}
             >
-              <ChevronLeft className="h-14 w-14" />
+              <ChevronLeft className="h-12 w-12" />
+            </button>
+            <button
+              type="button"
+              data-move
+              aria-label="Salta"
+              className="pointer-events-auto flex flex-col items-center justify-center h-24 w-24 rounded-full bg-peach/95 text-cocoa shadow-xl landscape:h-28 landscape:w-28 active:scale-90 transition-transform font-display border-2 border-cocoa/10 select-none"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                bag.current.jumps.add(e.pointerId);
+                bag.current.jumpQueue += 1;
+                try {
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                } catch {
+                  /* pointer already captured */
+                }
+              }}
+              onPointerUp={(e) => {
+                bag.current.jumps.delete(e.pointerId);
+              }}
+              onPointerCancel={(e) => {
+                bag.current.jumps.delete(e.pointerId);
+              }}
+            >
+              <span className="text-2xl leading-none">🐾</span>
+              <span className="text-xs font-bold tracking-wider mt-0.5">SALTA</span>
             </button>
           </div>
         ) : (
@@ -627,38 +706,107 @@ export function OrsoGame() {
         {story ? (
           <button
             type="button"
-            className="pointer-events-auto absolute inset-0 z-50 flex items-center justify-center bg-cocoa/35 p-3"
+            className="pointer-events-auto absolute inset-0 z-50 flex items-center justify-center bg-cocoa/40 p-3"
             onClick={advanceStory}
           >
-            <div className="flex w-full max-w-3xl flex-col items-center gap-3 rounded-card bg-foam px-4 py-4 shadow-lg landscape:flex-row landscape:gap-6 landscape:px-6">
-              <div className="relative h-44 w-full max-w-md landscape:h-52">
+            <div className="flex w-full max-w-2xl flex-col items-center gap-3 rounded-card bg-foam px-5 py-5 shadow-2xl text-center">
+              <div className="relative h-44 w-full max-w-md landscape:h-48">
                 <img
                   src={panel === 3 ? asset("/sprites/bear/run-1.png") : asset("/sprites/bear/idle-1.png")}
                   alt=""
-                  className={`absolute bottom-0 h-36 w-auto transition-all duration-500 ${panel === 0 ? "left-1/2 -translate-x-1/2" : "left-2"} ${panel === 3 ? "left-6" : ""}`}
+                  className={`absolute bottom-0 h-36 w-auto transition-all duration-500 ${panel === 0 ? "left-1/2 -translate-x-1/2" : "left-4"} ${panel === 3 ? "left-8" : ""}`}
                 />
                 {panel === 0 ? <span className="absolute bottom-8 left-1/2 h-10 w-10 -translate-x-1/2 rounded-full bg-peach/75 animate-pulse" /> : null}
                 {panel === 1 ? <img src={asset("/sprites/powder.png")} alt="" className="absolute bottom-8 right-6 h-20 w-auto" /> : null}
                 {panel >= 2 ? (
-                  <div className={`absolute bottom-0 right-2 flex items-end gap-1 transition-all duration-500 ${panel === 3 ? "scale-100" : "scale-75 opacity-80"}`}>
+                  <div className={`absolute bottom-0 right-4 flex items-end gap-1 transition-all duration-500 ${panel === 3 ? "scale-100" : "scale-75 opacity-80"}`}>
                     <img
                       src={asset("/sprites/door.png")}
                       alt=""
                       className={panel === 3 ? "h-36 w-auto" : "h-20 w-auto"}
                     />
                     {panel === 3 ? (
-                      <img src={asset("/sprites/toilet.png")} alt="" className="h-28 w-auto -ml-3" />
+                      <img src={asset("/sprites/toilet.png")} alt="" className="h-28 w-auto -ml-3 animate-bounce" />
                     ) : null}
                   </div>
                 ) : null}
               </div>
-              <div className="flex gap-2" aria-hidden>
+
+              <div className="flex flex-col items-center text-center mt-1">
+                <h3 className="font-display text-2xl sm:text-3xl text-cocoa">{STORY_PAGES[panel].title}</h3>
+                <p className="mt-1 text-base sm:text-lg text-cocoa/90 font-medium max-w-md">{STORY_PAGES[panel].text}</p>
+              </div>
+
+              <div className="flex items-center gap-2 mt-2" aria-hidden>
                 {[0, 1, 2, 3].map((i) => (
-                  <span key={i} className={`h-3 w-3 rounded-full ${i === panel ? "bg-peach" : "bg-cream"}`} />
+                  <span key={i} className={`h-3 rounded-full transition-all ${i === panel ? "w-6 bg-peach" : "w-3 bg-cream border border-cocoa/20"}`} />
                 ))}
               </div>
+
+              <p className="text-xs text-cocoa/60 font-display">Tocca per andare avanti</p>
             </div>
           </button>
+        ) : null}
+
+        {trophies ? (
+          <div className="pointer-events-auto absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-cocoa/45 p-3">
+            <div className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-card bg-foam p-5 shadow-2xl text-center border-4 border-gold/30">
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-3xl animate-bounce">🦆</span>
+                <h2 className="font-display text-3xl sm:text-4xl text-cocoa">Galleria Paperelle d'Oro</h2>
+              </div>
+              <p className="mt-1 text-sm text-cocoa/80">
+                In ogni stanza della casa è nascosta una paperella d'oro segreta. Quante ne hai trovate?
+              </p>
+
+              <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {NAMES.map((name, i) => {
+                  const found = !!save.ducks[i];
+                  const locked = i > save.unlocked;
+                  return (
+                    <div
+                      key={name}
+                      className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border-2 transition-all ${
+                        found
+                          ? "bg-amber-50 border-gold shadow-md scale-100"
+                          : "bg-cream/60 border-cocoa/15 opacity-60"
+                      }`}
+                    >
+                      <div className="h-14 w-14 grid place-items-center">
+                        {found ? (
+                          <img
+                            src={asset("/sprites/goldduck.png")}
+                            alt="Paperella d'oro"
+                            className="h-12 w-auto object-contain animate-pulse drop-shadow"
+                          />
+                        ) : (
+                          <span className="text-2xl filter grayscale opacity-40">🦆</span>
+                        )}
+                      </div>
+                      <span className="font-display text-sm leading-tight text-cocoa mt-1">{name}</span>
+                      <span className="text-[11px] font-bold mt-0.5" style={{ color: found ? "#b45309" : "#8c7e72" }}>
+                        {found ? "Trovata! ✨" : locked ? "Stanza chiusa" : "Nascosta... 🔍"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {save.ducks.filter(Boolean).length === 8 ? (
+                <div className="mt-4 p-2.5 rounded-2xl bg-amber-100 border border-gold text-cocoa font-display text-base">
+                  🌟 Complimenti! Hai tutte le 8 paperelle! Sei il campione supremo di Orso Borotalco! 👑
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                className="mt-4 min-h-12 w-full rounded-full bg-peach font-display text-xl text-cocoa shadow active:scale-95 transition-transform"
+                onClick={() => setTrophies(false)}
+              >
+                Torna ai Giochi
+              </button>
+            </div>
+          </div>
         ) : null}
 
         {help ? (

@@ -37,12 +37,12 @@ function lift(kind: SolidKind, x: number, y: number, w: number, amp: number, spe
   return { ...plat(kind, x, y, w, true), move: { axis: "y", origin: y, amp, speed, phase } };
 }
 
-function bubbleStep(x: number, y: number, phase: number, w = 190): Solid {
-  return { x, y, w, h: 28, kind: "cloud", oneWay: true, pop: { period: 4.6, open: 2.9, phase } };
+function bubbleStep(x: number, y: number, phase: number, w = 210): Solid {
+  return { x, y, w, h: 28, kind: "cloud", oneWay: true, pop: { period: 5.6, open: 3.9, phase } };
 }
 
 function basket(x: number, y: number, w: number, amp: number, speed: number, phase: number): Solid {
-  return { x, y, w, h: 34, kind: "basket", oneWay: true, move: { axis: "y", origin: y, amp, speed, phase } };
+  return { x, y, w, h: 36, kind: "basket", oneWay: true, move: { axis: "y", origin: y, amp, speed, phase } };
 }
 
 function flight(x: number, y: number, n: number, rise: number, step: number): Solid[] {
@@ -352,12 +352,12 @@ function corridoio(): Level {
 function lavanderia(): Level {
   const w = 4900;
   const baskets = [
-    basket(700, 400, 210, 80, 0.7, 0),
-    basket(1300, 380, 200, 90, 0.85, 1.4),
-    basket(1900, 370, 220, 96, 0.75, 2.6),
-    basket(2620, 340, 200, 110, 0.7, 0.4),
-    basket(3240, 400, 200, 86, 0.8, 0.8),
-    basket(3760, 380, 210, 96, 0.7, 2),
+    basket(700, 400, 240, 65, 0.55, 0),
+    basket(1300, 380, 230, 75, 0.6, 1.4),
+    basket(1900, 370, 240, 80, 0.55, 2.6),
+    basket(2620, 340, 230, 85, 0.55, 0.4),
+    basket(3240, 400, 230, 70, 0.6, 0.8),
+    basket(3760, 380, 240, 75, 0.55, 2),
   ];
   return {
     index: 4,

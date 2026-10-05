@@ -1,27 +1,30 @@
 import { LEVEL_COUNT } from "@/game/levels";
 
 export type SaveData = {
-  v: 3;
+  v: 4;
   unlocked: number;
   best: number[];
   cleared: boolean[];
+  ducks: boolean[];
 };
 
 const KEY = "orso-borotalco-v1";
 const LAST = LEVEL_COUNT - 1;
 
 export const emptySave = (): SaveData => ({
-  v: 3,
+  v: 4,
   unlocked: 0,
   best: Array.from({ length: LEVEL_COUNT }, () => 0),
   cleared: Array.from({ length: LEVEL_COUNT }, () => false),
+  ducks: Array.from({ length: LEVEL_COUNT }, () => false),
 });
 
-function pad(best: number[], cleared: boolean[]): SaveData {
+function pad(best: number[], cleared: boolean[], ducks: boolean[]): SaveData {
   const next = emptySave();
   for (let i = 0; i < LEVEL_COUNT; i++) {
     next.best[i] = typeof best[i] === "number" ? best[i] : 0;
     next.cleared[i] = Boolean(cleared[i]);
+    next.ducks[i] = Boolean(ducks[i]);
   }
   return next;
 }
@@ -35,6 +38,7 @@ export function loadSave(): SaveData {
       unlocked?: number;
       best?: number[];
       cleared?: boolean[];
+      ducks?: boolean[];
     };
     if (p.v === 1 || p.v === 2) {
       const best = Array.from({ length: LEVEL_COUNT }, () => 0);
@@ -46,12 +50,14 @@ export function loadSave(): SaveData {
       });
       const oldU = Math.max(0, p.unlocked ?? 0);
       const unlocked = from5[Math.min(from5.length - 1, oldU)] ?? 0;
-      return { v: 3, unlocked, best, cleared };
+      return { v: 4, unlocked, best, cleared, ducks: Array.from({ length: LEVEL_COUNT }, () => false) };
     }
-    if (p.v !== 3) return emptySave();
-    const data = pad(p.best ?? [], p.cleared ?? []);
-    data.unlocked = Math.max(0, Math.min(LAST, p.unlocked ?? 0));
-    return data;
+    if (p.v === 3 || p.v === 4) {
+      const data = pad(p.best ?? [], p.cleared ?? [], p.ducks ?? []);
+      data.unlocked = Math.max(0, Math.min(LAST, p.unlocked ?? 0));
+      return data;
+    }
+    return emptySave();
   } catch {
     return emptySave();
   }
