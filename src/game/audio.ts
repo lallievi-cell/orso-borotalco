@@ -21,6 +21,7 @@ export function createAudio() {
   let next = 0;
   let step = 0;
   let musicOn = false;
+  let currentUtterance: SpeechSynthesisUtterance | null = null;
 
   function ensure() {
     if (typeof AudioContext === "undefined") return null;
@@ -103,22 +104,45 @@ export function createAudio() {
       musicOn = true;
       ensure();
     },
-    speak(text: string) {
-      if (muted || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    speak(text: string, onEnd?: () => void) {
+      if (muted || typeof window === "undefined" || !("speechSynthesis" in window)) {
+        if (onEnd) {
+          window.setTimeout(onEnd, Math.max(3500, text.length * 80));
+        }
+        return;
+      }
       try {
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
+        currentUtterance = u;
         u.lang = "it-IT";
         u.pitch = 1.15; // Voce dolce e amichevole per bambini
-        u.rate = 0.92; // Ritmata e scandita bene
-        // Seleziona preferibilmente una voce italiana naturale se presente
+        u.rate = 0.90; // Ritmata e scandita bene
         const voices = window.speechSynthesis.getVoices();
         const itVoice = voices.find((v) => v.lang.startsWith("it") && !v.name.includes("Google") && !v.name.includes("eSpeak")) ||
           voices.find((v) => v.lang.startsWith("it"));
         if (itVoice) u.voice = itVoice;
+
+        let done = false;
+        const complete = () => {
+          if (done) return;
+          done = true;
+          currentUtterance = null;
+          if (onEnd) onEnd();
+        };
+
+        u.onend = complete;
+        u.onerror = complete;
+
+        // Safety fallback timer nel caso in cui il browser blocchi il sintetizzatore
+        const maxWait = Math.max(5500, text.length * 110);
+        window.setTimeout(() => {
+          if (!done) complete();
+        }, maxWait);
+
         window.speechSynthesis.speak(u);
       } catch {
-        // Nessun blocco se la sintesi vocale non è disponibile
+        if (onEnd) onEnd();
       }
     },
     tick() {

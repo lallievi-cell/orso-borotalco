@@ -1,5 +1,5 @@
 import { ChevronLeft, House, Pause, Play, RotateCcw, Volume2, VolumeX } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { asset, loadArt, type Art } from "@/game/assets";
 import { createAudio, type AudioBus } from "@/game/audio";
 import { renderTitle, renderWorld } from "@/game/draw";
@@ -363,16 +363,27 @@ export function OrsoGame() {
 
   useEffect(() => {
     if (!story) return;
-    bag.current.audio?.speak(STORY_PAGES[panel]?.text ?? "");
-    const id = window.setTimeout(() => {
-      if (panel >= 3) {
-        setStory(false);
-        begin(0);
-      } else {
-        setPanel(panel + 1);
-      }
-    }, 3800);
-    return () => window.clearTimeout(id);
+    let cancelled = false;
+    let timerId = 0;
+
+    bag.current.audio?.speak(STORY_PAGES[panel]?.text ?? "", () => {
+      if (cancelled) return;
+      // Pausa confortevole di 1.2s dopo la fine della voce per godersi il disegno
+      timerId = window.setTimeout(() => {
+        if (cancelled) return;
+        if (panel >= 3) {
+          setStory(false);
+          begin(0);
+        } else {
+          setPanel((p) => p + 1);
+        }
+      }, 1200);
+    });
+
+    return () => {
+      cancelled = true;
+      if (timerId) window.clearTimeout(timerId);
+    };
   }, [story, panel]);
 
   function openStory() {
@@ -595,7 +606,7 @@ export function OrsoGame() {
               data-move
               aria-label="Salta"
               className="pointer-events-auto flex flex-col items-center justify-center h-24 w-24 rounded-full bg-peach/95 text-cocoa shadow-xl landscape:h-28 landscape:w-28 active:scale-90 transition-transform font-display border-2 border-cocoa/10 select-none"
-              onPointerDown={(e) => {
+              onPointerDown={(e: ReactPointerEvent<HTMLButtonElement>) => {
                 e.preventDefault();
                 e.stopPropagation();
                 bag.current.jumps.add(e.pointerId);
@@ -606,10 +617,10 @@ export function OrsoGame() {
                   /* pointer already captured */
                 }
               }}
-              onPointerUp={(e) => {
+              onPointerUp={(e: ReactPointerEvent<HTMLButtonElement>) => {
                 bag.current.jumps.delete(e.pointerId);
               }}
-              onPointerCancel={(e) => {
+              onPointerCancel={(e: ReactPointerEvent<HTMLButtonElement>) => {
                 bag.current.jumps.delete(e.pointerId);
               }}
             >
@@ -743,7 +754,21 @@ export function OrsoGame() {
                 ))}
               </div>
 
-              <p className="text-xs text-cocoa/60 font-display">Tocca per andare avanti</p>
+              <div className="flex items-center justify-between w-full mt-2 px-3">
+                <span className="text-xs text-cocoa/60 font-display">Tocca per andare avanti</span>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className="text-xs font-bold text-cocoa/80 hover:text-cocoa underline p-1 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setStory(false);
+                    begin(0);
+                  }}
+                >
+                  Salta storia ⏩
+                </span>
+              </div>
             </div>
           </button>
         ) : null}
