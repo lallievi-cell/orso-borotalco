@@ -694,6 +694,323 @@ function drawToyBlocks(ctx: CanvasRenderingContext2D, s: Solid, _t: number) {
   }
 }
 
+function drawTrampoline(ctx: CanvasRenderingContext2D, s: Solid, t: number) {
+  // 1. Gambe tubolari metalliche curve con piedini antiscivolo in gomma
+  ctx.strokeStyle = "#475569";
+  ctx.lineWidth = 4;
+  ctx.lineCap = "round";
+  // Gamba sinistra
+  ctx.beginPath();
+  ctx.moveTo(s.x + 22, s.y + s.h - 2);
+  ctx.quadraticCurveTo(s.x + 14, s.y + s.h + 10, s.x + 24, s.y + s.h + 14);
+  ctx.stroke();
+  // Gamba destra
+  ctx.beginPath();
+  ctx.moveTo(s.x + s.w - 22, s.y + s.h - 2);
+  ctx.quadraticCurveTo(s.x + s.w - 14, s.y + s.h + 10, s.x + s.w - 24, s.y + s.h + 14);
+  ctx.stroke();
+  // Piedini in gomma nera
+  ctx.fillStyle = "#1e293b";
+  roundRect(ctx, s.x + 17, s.y + s.h + 11, 14, 5, 2.5);
+  ctx.fill();
+  roundRect(ctx, s.x + s.w - 31, s.y + s.h + 11, 14, 5, 2.5);
+  ctx.fill();
+
+  // 2. Cuscino toroidale di sicurezza perimetrale (turchese/menta lucido con finitura bombata)
+  const padGrad = ctx.createLinearGradient(s.x, s.y, s.x, s.y + s.h);
+  padGrad.addColorStop(0, "#7ee0ca"); // luce zenitale satinata
+  padGrad.addColorStop(0.4, "#48bba0");
+  padGrad.addColorStop(1, "#277a67"); // ombra inferiore
+  ctx.fillStyle = padGrad;
+  roundRect(ctx, s.x, s.y, s.w, s.h + 4, 14);
+  ctx.fill();
+
+  // Spigolo di luce curva in cima
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(s.x + 16, s.y + 2);
+  ctx.lineTo(s.x + s.w - 16, s.y + 2);
+  ctx.stroke();
+
+  // Bordo di cucitura perimetrale
+  ctx.strokeStyle = "rgba(20, 80, 65, 0.4)";
+  ctx.lineWidth = 1.2;
+  roundRect(ctx, s.x + 1, s.y + 1, s.w - 2, s.h + 2, 13);
+  ctx.stroke();
+
+  // 3. Telo elastico centrale di rimbalzo (tessuto tecnico teso)
+  const matW = s.w - 44;
+  const matX = s.x + 22;
+  const matY = s.y + 4;
+  const matH = s.h - 4;
+  const matGrad = ctx.createLinearGradient(matX, matY, matX, matY + matH);
+  matGrad.addColorStop(0, "#334155");
+  matGrad.addColorStop(1, "#1e293b");
+  ctx.fillStyle = matGrad;
+  roundRect(ctx, matX, matY, matW, matH, 8);
+  ctx.fill();
+
+  // Mirino/stella elastica al centro del telo
+  ctx.strokeStyle = "rgba(255, 220, 100, 0.65)";
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.arc(s.x + s.w / 2, matY + matH / 2, 7.5, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 4. Molle di tensione visibili ai lati (spirali in metallo cromato)
+  for (let i = 0; i < 2; i++) {
+    const sx = i === 0 ? s.x + 9 : s.x + s.w - 21;
+    ctx.strokeStyle = "#cbd5e1";
+    ctx.lineWidth = 1.8;
+    for (let j = 0; j < 3; j++) {
+      ctx.beginPath();
+      ctx.arc(sx + 6, s.y + 7 + j * 6, 3, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // 5. Indicatore "BOING!" dinamico: freccia dorata che pulsa + stelline
+  const bounceY = Math.sin(t * 6 + s.x * 0.01) * 3.5;
+  const arrowCx = s.x + s.w / 2;
+  const arrowCy = s.y - 12 + bounceY;
+
+  // Freccia verso l'alto con gradiente dorato
+  const arrowGrad = ctx.createLinearGradient(arrowCx, arrowCy - 9, arrowCx, arrowCy + 7);
+  arrowGrad.addColorStop(0, "#ffe066");
+  arrowGrad.addColorStop(1, "#f77f00");
+  ctx.fillStyle = arrowGrad;
+  ctx.beginPath();
+  ctx.moveTo(arrowCx, arrowCy - 9);
+  ctx.lineTo(arrowCx + 8.5, arrowCy + 0.5);
+  ctx.lineTo(arrowCx + 3.5, arrowCy + 0.5);
+  ctx.lineTo(arrowCx + 3.5, arrowCy + 7);
+  ctx.lineTo(arrowCx - 3.5, arrowCy + 7);
+  ctx.lineTo(arrowCx - 3.5, arrowCy + 0.5);
+  ctx.lineTo(arrowCx - 8.5, arrowCy + 0.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // Contorno bianco puro e brillante
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1.3;
+  ctx.stroke();
+
+  // Stelline gioiose ai lati
+  ctx.fillStyle = "rgba(255, 225, 110, 0.85)";
+  drawStar5(ctx, arrowCx - 16, arrowCy + 1 - bounceY * 0.4, 3.2);
+  ctx.fill();
+  drawStar5(ctx, arrowCx + 16, arrowCy + 1 - bounceY * 0.4, 3.2);
+  ctx.fill();
+}
+
+function drawCushion(ctx: CanvasRenderingContext2D, s: Solid, _t: number) {
+  // 1. Volant smerlato morbido sul retro (pizzo da nursery rétro)
+  ctx.fillStyle = "rgba(255, 238, 230, 0.70)";
+  const ruffStep = 13;
+  for (let rx = s.x + 8; rx < s.x + s.w - 6; rx += ruffStep) {
+    ctx.beginPath();
+    ctx.arc(rx, s.y + s.h + 2, 6.5, 0, Math.PI);
+    ctx.fill();
+  }
+
+  // 2. Corpo principale bombato in velluto di cotone trapuntato
+  const cushGrad = ctx.createLinearGradient(s.x, s.y - 2, s.x, s.y + s.h + 8);
+  cushGrad.addColorStop(0, "#ffe8df"); // riflesso superiore caldo
+  cushGrad.addColorStop(0.3, "#fcaea0"); // velluto rosa pesca
+  cushGrad.addColorStop(0.75, "#e8806e");
+  cushGrad.addColorStop(1, "#c45846"); // ombra inferiore d'appoggio
+  ctx.fillStyle = cushGrad;
+  roundRect(ctx, s.x, s.y, s.w, s.h + 6, 16);
+  ctx.fill();
+
+  // Cordonetto perimetrale (piping border sartoriale di pregio)
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.70)";
+  ctx.lineWidth = 2;
+  roundRect(ctx, s.x + 2, s.y + 2, s.w - 4, s.h + 2, 14);
+  ctx.stroke();
+
+  // Cresta morbida di luce satinata in alto
+  const sheen = ctx.createLinearGradient(s.x, s.y, s.x, s.y + s.h * 0.45);
+  sheen.addColorStop(0, "rgba(255, 255, 255, 0.60)");
+  sheen.addColorStop(1, "rgba(255, 255, 255, 0)");
+  ctx.fillStyle = sheen;
+  roundRect(ctx, s.x + 8, s.y + 2, s.w - 16, s.h * 0.4, 10);
+  ctx.fill();
+
+  // 3. Trapuntatura sartoriale con bottoni rivestiti e pieghe di tensione a raggiera
+  const btnCount = Math.max(2, Math.round(s.w / 80));
+  const btnSpacing = s.w / (btnCount + 1);
+  for (let b = 1; b <= btnCount; b++) {
+    const bx = s.x + b * btnSpacing;
+    const by = s.y + s.h * 0.52;
+
+    // Linee di tensione del tessuto trapuntato (pieghe morbide a raggiera)
+    ctx.strokeStyle = "rgba(150, 50, 38, 0.28)";
+    ctx.lineWidth = 1.3;
+    // Piega sinistra
+    ctx.beginPath();
+    ctx.moveTo(bx - 17, by - 1);
+    ctx.quadraticCurveTo(bx - 8, by - 2.5, bx - 4, by);
+    ctx.stroke();
+    // Piega destra
+    ctx.beginPath();
+    ctx.moveTo(bx + 17, by - 1);
+    ctx.quadraticCurveTo(bx + 8, by - 2.5, bx + 4, by);
+    ctx.stroke();
+    // Pieghe superiori verso gli angoli
+    ctx.beginPath();
+    ctx.moveTo(bx - 10, by - 7);
+    ctx.quadraticCurveTo(bx - 5, by - 4, bx - 2, by - 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(bx + 10, by - 7);
+    ctx.quadraticCurveTo(bx + 5, by - 4, bx + 2, by - 2);
+    ctx.stroke();
+
+    // Riflesso chiaro accanto alle pieghe (luce sulla piega)
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(bx - 16, by);
+    ctx.quadraticCurveTo(bx - 8, by - 1.5, bx - 4, by + 1);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(bx + 16, by);
+    ctx.quadraticCurveTo(bx + 8, by - 1.5, bx + 4, by + 1);
+    ctx.stroke();
+
+    // Scanalatura d'incavo del bottone (ombra profonda)
+    ctx.fillStyle = "rgba(130, 40, 30, 0.38)";
+    ctx.beginPath();
+    ctx.arc(bx, by + 1, 6.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bottone bombato rivestito in tessuto
+    const btnGrad = ctx.createLinearGradient(bx - 4, by - 4, bx + 4, by + 4);
+    btnGrad.addColorStop(0, "#ffe2d8");
+    btnGrad.addColorStop(0.5, "#f48c78");
+    btnGrad.addColorStop(1, "#b53e2e");
+    ctx.fillStyle = btnGrad;
+    ctx.beginPath();
+    ctx.arc(bx, by, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Punto luce brillante sul bottone
+    ctx.fillStyle = "rgba(255, 255, 255, 0.88)";
+    ctx.beginPath();
+    ctx.arc(bx - 1.5, by - 1.5, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawBench(ctx: CanvasRenderingContext2D, s: Solid, _t: number) {
+  // 1. Gambe tornite in legno massello con staffe di raccordo
+  const legGrad = ctx.createLinearGradient(s.x, s.y + s.h - 4, s.x, s.y + s.h + 16);
+  legGrad.addColorStop(0, "#8a4f25");
+  legGrad.addColorStop(1, "#5c3012");
+  ctx.fillStyle = legGrad;
+
+  // Gamba sinistra sagomata
+  roundRect(ctx, s.x + 10, s.y + s.h - 4, 12, 18, 3);
+  ctx.fill();
+  // Gamba destra sagomata
+  roundRect(ctx, s.x + s.w - 22, s.y + s.h - 4, 12, 18, 3);
+  ctx.fill();
+
+  // Traversa orizzontale di collegamento tra le gambe
+  ctx.fillStyle = "#703e1a";
+  ctx.fillRect(s.x + 16, s.y + s.h + 4, s.w - 32, 5);
+
+  // 2. Tavola superiore della panca in rovere/faggio levigato (spessore 3D)
+  const woodTop = ctx.createLinearGradient(s.x, s.y, s.x, s.y + s.h + 4);
+  woodTop.addColorStop(0, "#f9cb94"); // faggio chiaro cerato
+  woodTop.addColorStop(0.4, "#e09d57");
+  woodTop.addColorStop(1, "#ab642a"); // ombra calda alla base della tavola
+  ctx.fillStyle = woodTop;
+  roundRect(ctx, s.x, s.y, s.w, s.h + 4, 7);
+  ctx.fill();
+
+  // Scanalatura tra le doghe di legno (2 doghe orizzontali)
+  ctx.strokeStyle = "rgba(90, 42, 12, 0.35)";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(s.x + 6, s.y + s.h * 0.52);
+  ctx.lineTo(s.x + s.w - 6, s.y + s.h * 0.52);
+  ctx.stroke();
+
+  // Spigolo superiore di luce cerata
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(s.x + 6, s.y + 2);
+  ctx.lineTo(s.x + s.w - 6, s.y + 2);
+  ctx.stroke();
+
+  // Bordo perimetrale rifinito
+  ctx.strokeStyle = "rgba(120, 60, 20, 0.4)";
+  ctx.lineWidth = 1;
+  roundRect(ctx, s.x, s.y, s.w, s.h + 4, 7);
+  ctx.stroke();
+
+  // Bulloni o chiodi in ottone dorato sui montanti
+  ctx.fillStyle = "#d4af37";
+  ctx.beginPath();
+  ctx.arc(s.x + 16, s.y + s.h * 0.52, 2.5, 0, Math.PI * 2);
+  ctx.arc(s.x + s.w - 16, s.y + s.h * 0.52, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+  ctx.beginPath();
+  ctx.arc(s.x + 15.5, s.y + s.h * 0.52 - 0.7, 0.9, 0, Math.PI * 2);
+  ctx.arc(s.x + s.w - 16.5, s.y + s.h * 0.52 - 0.7, 0.9, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawMat(ctx: CanvasRenderingContext2D, s: Solid, _t: number) {
+  // 1. Frange morbide di cotone chiaro ritorto che pendono dal fondo
+  ctx.strokeStyle = "rgba(255, 252, 245, 0.85)";
+  ctx.lineWidth = 2;
+  ctx.lineCap = "round";
+  for (let x = s.x + 6; x < s.x + s.w - 4; x += 6) {
+    const wave = Math.sin(x * 0.3) * 2;
+    ctx.beginPath();
+    ctx.moveTo(x, s.y + s.h + 2);
+    ctx.lineTo(x + wave * 0.5, s.y + s.h + 9 + Math.abs(wave));
+    ctx.stroke();
+  }
+
+  // 2. Base del tappeto in cotone verde salvia/tiffany intrecciato
+  const matGrad = ctx.createLinearGradient(s.x, s.y + 2, s.x, s.y + s.h + 4);
+  matGrad.addColorStop(0, "#8ed4c7");
+  matGrad.addColorStop(0.5, "#68beaF");
+  matGrad.addColorStop(1, "#449486");
+  ctx.fillStyle = matGrad;
+  roundRect(ctx, s.x, s.y + 2, s.w, s.h + 2, 7);
+  ctx.fill();
+
+  // Bordo di cucitura perimetrale (punto festone)
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+  ctx.lineWidth = 1.2;
+  roundRect(ctx, s.x + 3, s.y + 4, s.w - 6, s.h - 2, 5);
+  ctx.stroke();
+
+  // 3. Motivo decorativo a rombi / chevron berbero bianco morbido
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.55)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  const step = 20;
+  for (let x = s.x + 12; x < s.x + s.w - 12; x += step) {
+    ctx.moveTo(x, s.y + s.h * 0.7);
+    ctx.lineTo(x + step * 0.5, s.y + s.h * 0.35);
+    ctx.lineTo(x + step, s.y + s.h * 0.7);
+  }
+  ctx.stroke();
+
+  // Spigolo di luce superiore
+  ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+  ctx.fillRect(s.x + 6, s.y + 3, s.w - 12, 2.5);
+}
+
 function drawPlatform(ctx: CanvasRenderingContext2D, s: Solid, t: number) {
   if (s.kind === "hedge" || s.kind === "basket" || s.kind === "cloud") {
     drawSetPiece(ctx, s, t);
@@ -709,9 +1026,20 @@ function drawPlatform(ctx: CanvasRenderingContext2D, s: Solid, t: number) {
   ctx.fill();
 
   if (s.move) {
-    ctx.fillStyle = "rgba(255,255,255,0.28)";
+    // Delicata scia magica di movimento sotto la piattaforma mobile
+    const auraBob = Math.sin(t * 4 + s.x * 0.02) * 2;
+    ctx.fillStyle = "rgba(255, 230, 180, 0.22)";
     ctx.beginPath();
-    ctx.ellipse(s.x + s.w / 2, s.y + 8, s.w * 0.62, 14, 0, 0, Math.PI * 2);
+    ctx.ellipse(s.x + s.w / 2, s.y + s.h + 8 + auraBob, s.w * 0.52, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Piccole lucciole fatate di movimento
+    ctx.fillStyle = "rgba(255, 245, 200, 0.75)";
+    const spark1 = (t * 24 + s.x) % s.w;
+    const spark2 = (t * 18 + s.x + s.w * 0.5) % s.w;
+    ctx.beginPath();
+    ctx.arc(s.x + spark1, s.y + s.h + 4 + Math.sin(t * 5 + spark1) * 3, 1.8, 0, Math.PI * 2);
+    ctx.arc(s.x + spark2, s.y + s.h + 5 + Math.cos(t * 6 + spark2) * 3, 1.4, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -722,59 +1050,15 @@ function drawPlatform(ctx: CanvasRenderingContext2D, s: Solid, t: number) {
   ctx.translate(-s.x, -(s.y + s.h));
 
   if (s.bounce) {
-    ctx.fillStyle = "#8fd4c0";
-    roundRect(ctx, s.x, s.y, s.w, s.h + 10, 16);
-    ctx.fill();
-    ctx.fillStyle = "#fffaf3";
-    for (let i = 0; i < 4; i++) {
-      ctx.fillRect(s.x + 14 + i * (s.w / 4.4), s.y + 6, 10, s.h);
-    }
-    ctx.fillStyle = "#fff";
-    ctx.beginPath();
-    ctx.moveTo(s.x + s.w / 2, s.y - 18);
-    ctx.lineTo(s.x + s.w / 2 - 11, s.y - 4);
-    ctx.lineTo(s.x + s.w / 2 + 11, s.y - 4);
-    ctx.closePath();
-    ctx.fill();
+    drawTrampoline(ctx, s, t);
   } else if (s.kind === "bench") {
-    ctx.fillStyle = "#a8683c";
-    ctx.fillRect(s.x + 10, s.y + s.h - 4, 10, 16);
-    ctx.fillRect(s.x + s.w - 20, s.y + s.h - 4, 10, 16);
-    const wood = ctx.createLinearGradient(s.x, s.y, s.x, s.y + s.h);
-    wood.addColorStop(0, "#f0b27a");
-    wood.addColorStop(1, "#c9844a");
-    ctx.fillStyle = wood;
-    roundRect(ctx, s.x, s.y, s.w, s.h + 4, 8);
-    ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.35)";
-    roundRect(ctx, s.x + 8, s.y + 4, s.w - 16, 6, 4);
-    ctx.fill();
+    drawBench(ctx, s, t);
   } else if (s.kind === "mat") {
-    ctx.fillStyle = "#7ec8bc";
-    roundRect(ctx, s.x, s.y + 4, s.w, s.h + 4, 8);
-    ctx.fill();
-    ctx.fillStyle = "#f7fffc";
-    for (let x = s.x + 6; x < s.x + s.w - 4; x += 14) ctx.fillRect(x, s.y + s.h - 2, 4, 8);
-    ctx.fillStyle = "rgba(255,255,255,0.45)";
-    ctx.fillRect(s.x + 8, s.y + 8, s.w - 16, 4);
+    drawMat(ctx, s, t);
   } else {
-    const cush = ctx.createLinearGradient(s.x, s.y, s.x, s.y + s.h + 12);
-    cush.addColorStop(0, "#ffe0d2");
-    cush.addColorStop(1, "#f0a892");
-    ctx.fillStyle = cush;
-    roundRect(ctx, s.x, s.y, s.w, s.h + 12, 18);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.65)";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(s.x + 16, s.y + s.h * 0.55);
-    ctx.quadraticCurveTo(s.x + s.w / 2, s.y + 8, s.x + s.w - 16, s.y + s.h * 0.55);
-    ctx.stroke();
-    ctx.fillStyle = "#e07a62";
-    ctx.beginPath();
-    ctx.arc(s.x + s.w / 2, s.y + s.h * 0.45, 5, 0, Math.PI * 2);
-    ctx.fill();
+    drawCushion(ctx, s, t);
   }
+
   ctx.restore();
 }
 
