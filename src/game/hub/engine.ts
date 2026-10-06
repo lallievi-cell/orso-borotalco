@@ -126,8 +126,8 @@ export function interactHub(
     }
   }
 
-  // 3. Se l'orsetto è vicino al coniglio dello shop
-  if (hub.nearShop) {
+  // 3. Se l'orsetto è vicino al coniglio dello shop o al Bazar
+  if (hub.nearShop || hub.activeNpc?.id === "coniglio") {
     if (audio) {
       audio.coin();
       audio.speak("Benvenuta al Bazar delle stelline! Scegli il tuo cappellino preferito!");

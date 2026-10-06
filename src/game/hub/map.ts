@@ -104,7 +104,7 @@ export function createNpcs(): NpcInfo[] {
       name: "BABBO CONIGLIO",
       wx: 9.5,
       wy: 14.5,
-      radius: 1.6,
+      radius: 2.6,
       color: "#a78bfa",
       lines: [
         `BENVENUTA AL BAZAR DI ORSO, ${PLAYER_NAME}!`,
@@ -124,8 +124,8 @@ export function getMapColliders(): { circles: ColliderCircle[]; rects: ColliderR
     circles: [
       // Fontana centrale
       { x: 11.5, y: 11.5, r: 1.6 },
-      // Gazebo del mercatino
-      { x: 9.5, y: 14.5, r: 1.4 },
+      // Gazebo del mercatino (struttura banco in legno)
+      { x: 9.5, y: 14.5, r: 1.05 },
       // Alberelli e cespugli nel cortile
       { x: 19.5, y: 18.5, r: 1.2 },
       { x: 16.5, y: 19.5, r: 1.2 },

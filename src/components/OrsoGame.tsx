@@ -564,6 +564,12 @@ export function OrsoGame() {
 
   function triggerHubAction() {
     if (!bag.current.hub) return;
+    if (bag.current.hub.nearShop || bag.current.hub.activeNpc?.id === "coniglio") {
+      bag.current.audio?.coin();
+      bag.current.audio?.speak("Benvenuta al Bazar delle stelline!");
+      setShopOpen(true);
+      return;
+    }
     const res = interactHub(bag.current.hub, bag.current.audio);
     if (res.enterLevel !== undefined) {
       begin(res.enterLevel);
@@ -610,6 +616,26 @@ export function OrsoGame() {
       return;
     }
 
+    // Se c'è un tocco diretto sul Bazar (bancarella o insegna "BAZAR")
+    const bazarScreen = worldToScreen(9.5, 14.5, 0, camX, camY);
+    const distToBazarScreen = Math.hypot(sx - bazarScreen.sx, sy - (bazarScreen.sy - 55));
+    const distToBazarTag = Math.hypot(sx - bazarScreen.sx, sy - (bazarScreen.sy - 116));
+    const isClickOnBazar = distToBazarScreen < 75 || distToBazarTag < 45;
+
+    if (isClickOnBazar) {
+      const distPlayerToBazar = Math.hypot(hub.player.wx - 9.5, hub.player.wy - 14.5);
+      if (distPlayerToBazar <= 2.8) {
+        bag.current.audio?.coin();
+        bag.current.audio?.speak("Benvenuta al Bazar delle stelline!");
+        setShopOpen(true);
+        return;
+      } else {
+        // Cammina direttamente di fronte al bancone del Bazar
+        bag.current.hubTap = { wx: 10.8, wy: 14.5 };
+        return;
+      }
+    }
+
     // Se l'orsetto è vicino alla porta e il tocco è sull'icona/pulsante della porta
     if (hub.activePortal) {
       const portalScreen = worldToScreen(hub.activePortal.wx, hub.activePortal.wy, 0, camX, camY);
@@ -623,9 +649,13 @@ export function OrsoGame() {
     }
 
     // Se l'orsetto è vicino all'NPC o allo Shop e il tocco è su di loro
-    if (hub.activeNpc) {
-      const npcScreen = worldToScreen(hub.activeNpc.wx, hub.activeNpc.wy, 0, camX, camY);
-      if (Math.hypot(sx - npcScreen.sx, sy - (npcScreen.sy - 50)) < 65) {
+    if (hub.activeNpc || hub.nearShop) {
+      const targetNpc = hub.activeNpc ?? { wx: 9.5, wy: 14.5, radius: 2.6, id: "coniglio" };
+      const npcScreen = worldToScreen(targetNpc.wx, targetNpc.wy, 0, camX, camY);
+      if (
+        Math.hypot(sx - npcScreen.sx, sy - (npcScreen.sy - 50)) < 85 ||
+        Math.hypot(sx - npcScreen.sx, sy - (npcScreen.sy - 105)) < 65
+      ) {
         const res = interactHub(hub, bag.current.audio);
         if (res.enterLevel !== undefined) {
           begin(res.enterLevel);

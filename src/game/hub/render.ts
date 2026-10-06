@@ -174,9 +174,20 @@ export function renderHub(
     drawTapIndicator(ctx, hub.tapTarget, camX, camY, hub.t);
   }
 
-  // 5. Prompt interattivi fluttuanti ("💬 PARLA", "🚪 ENTRA")
+  // 5. Prompt interattivi fluttuanti ("💬 PARLA", "🚪 ENTRA", "🛍️ APRI BAZAR")
   if (hub.activePortal) {
     drawPortalPrompt(ctx, hub.activePortal, camX, camY, hub.t);
+  } else if (hub.nearShop) {
+    const coniglio = hub.npcs.find((n) => n.id === "coniglio") ?? {
+      wx: 9.5,
+      wy: 14.5,
+      id: "coniglio",
+      name: "BABBO CONIGLIO",
+      radius: 2.6,
+      color: "#f59e0b",
+      lines: [],
+    };
+    drawNpcPrompt(ctx, coniglio, camX, camY, hub.t);
   } else if (hub.activeNpc) {
     drawNpcPrompt(ctx, hub.activeNpc, camX, camY, hub.t);
   }
@@ -2231,7 +2242,7 @@ function drawPortalPrompt(
   ctx.fillText(portal.locked ? "🔒 CHIUSO" : "🚪 ENTRA!", sx, btnY + 1);
 }
 
-/** Pulsante fluttuante per parlare con gli amici. */
+/** Pulsante fluttuante per parlare con gli amici o aprire il Bazar. */
 function drawNpcPrompt(
   ctx: CanvasRenderingContext2D,
   npc: NpcInfo,
@@ -2242,10 +2253,14 @@ function drawNpcPrompt(
   const { sx, sy } = worldToScreen(npc.wx, npc.wy, 0, camX, camY);
   const floatY = Math.sin(t * 6) * 3;
 
-  const btnY = sy - 78 + floatY;
-  ctx.fillStyle = "#3b82f6";
+  const isShop = npc.id === "coniglio";
+  const btnY = (isShop ? sy - 110 : sy - 78) + floatY;
+  const btnW = isShop ? 116 : 92;
+  const btnH = 28;
+
+  ctx.fillStyle = isShop ? "#f59e0b" : "#3b82f6";
   ctx.beginPath();
-  ctx.roundRect(sx - 46, btnY - 14, 92, 28, 14);
+  ctx.roundRect(sx - btnW / 2, btnY - btnH / 2, btnW, btnH, 14);
   ctx.fill();
   ctx.strokeStyle = "#ffffff";
   ctx.lineWidth = 2.2;
@@ -2255,7 +2270,7 @@ function drawNpcPrompt(
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("💬 PARLA", sx, btnY + 1);
+  ctx.fillText(isShop ? "🛍️ APRI BAZAR" : "💬 PARLA", sx, btnY + 1);
 }
 
 /** Fumetto del dialogo in chiaro stampatello per Celeste. */

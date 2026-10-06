@@ -227,9 +227,9 @@ export function stepHub(hub: HubState, input: HubInput, dt: number): HubStepEven
     ev.ballCombo = ball.combo;
   }
 
-  // 6c. Passaggi giocosi con gli amici NPC (Papà Orso, Mamma Orsa, Micio, Paperella)
+  // 6c. Passaggi giocosi con gli amici NPC (Papà Orso, Mamma Orsa, Micio)
   for (const npc of hub.npcs) {
-    if (npc.id === "coniglio") continue; // Babbo Coniglio resta al banco del bazar
+    if (npc.id === "coniglio" || npc.id === "paperella") continue; // Babbo Coniglio resta al bazar, Paperella è sulla fontana
     const dNpc = Math.hypot(ball.wx - npc.wx, ball.wy - npc.wy);
     if (dNpc < npc.radius + ball.radius + 0.35 && ball.lastKickBy !== npc.id) {
       // L'amico rilancia la palla verso l'orsetto!
@@ -375,16 +375,26 @@ export function stepHub(hub: HubState, input: HubInput, dt: number): HubStepEven
   hub.activePortal = foundPortal;
 
   // 9. Rilevamento NPC e shop
+  const distToShop = Math.hypot(p.wx - 9.5, p.wy - 14.5);
+  const isNearShop = distToShop < 2.6;
+  hub.nearShop = isNearShop;
+
   let foundNpc: NpcInfo | null = null;
   for (const npc of hub.npcs) {
+    if (npc.id === "coniglio" && isNearShop) {
+      foundNpc = npc;
+      break;
+    }
     const d = Math.hypot(p.wx - npc.wx, p.wy - npc.wy);
     if (d < npc.radius) {
       foundNpc = npc;
       break;
     }
   }
+  if (!foundNpc && isNearShop) {
+    foundNpc = hub.npcs.find((n) => n.id === "coniglio") ?? null;
+  }
   hub.activeNpc = foundNpc;
-  hub.nearShop = foundNpc?.id === "coniglio";
 
   // 10. Movimento fluido della telecamera con inquadratura ideale del diorama
   const targetScreen = worldToScreen(p.wx, p.wy, p.wz);
