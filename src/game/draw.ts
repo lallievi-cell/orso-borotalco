@@ -2,6 +2,7 @@ import type { Art } from "@/game/assets";
 import type { Sim } from "@/game/sim";
 import type { Enemy, Solid, Theme } from "@/game/types";
 import { PH, PW, VIEW_H, VIEW_W } from "@/game/types";
+import { drawHat } from "@/game/hub/cosmetics";
 
 const THEME = {
   salotto: {
@@ -1223,6 +1224,8 @@ export function renderWorld(
   art: Art,
   camX: number,
   camY: number,
+  equippedHat?: string | null,
+  equippedPowder?: string | null,
 ) {
   drawBackdrop(ctx, sim, art, camX, camY);
 
@@ -1402,7 +1405,14 @@ export function renderWorld(
     ctx.fill();
   }
   if (p.powder > 0) {
-    ctx.fillStyle = "rgba(255,255,255,0.42)";
+    let cloudColor = "rgba(255,255,255,0.42)";
+    if (equippedPowder === "powder_rose") cloudColor = "rgba(254,205,211,0.55)";
+    else if (equippedPowder === "powder_gold") cloudColor = "rgba(254,240,138,0.6)";
+    else if (equippedPowder === "powder_rainbow") {
+      const hue = Math.floor((sim.t * 120) % 360);
+      cloudColor = `hsla(${hue}, 80%, 75%, 0.55)`;
+    }
+    ctx.fillStyle = cloudColor;
     ctx.beginPath();
     ctx.ellipse(p.x + PW / 2, p.y + PH * 0.45, 48, 40, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -1474,6 +1484,13 @@ export function renderWorld(
     ctx.save();
     ctx.globalAlpha = blink ? 0.45 : 1;
     blit(ctx, sprite, p.x + PW / 2, p.y + PH + 10 + offsetY, 156, p.facing, sx, sy, rot);
+
+    if (equippedHat) {
+      const headX = p.x + PW / 2 + 8 * p.facing;
+      const headY = p.y + PH + 10 + offsetY - 108 * sy;
+      drawHat(ctx, equippedHat, headX, headY, p.facing, sx * 1.35);
+    }
+
     ctx.restore();
   }
 

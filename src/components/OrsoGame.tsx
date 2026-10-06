@@ -7,6 +7,13 @@ import { coinTotal, coinsLeft, createSim, step, type Sim } from "@/game/sim";
 import { emptySave, loadSave, writeSave, type SaveData } from "@/game/save";
 import { PH, PW, VIEW_H, VIEW_W, type Input } from "@/game/types";
 import { cheer, PLAYER_NAME } from "@/game/player";
+import { createHub, interactHub } from "@/game/hub/engine";
+import { stepHub, type HubInput } from "@/game/hub/physics";
+import { renderHub } from "@/game/hub/render";
+import { screenToWorld, worldToScreen } from "@/game/hub/coords";
+import type { HubState } from "@/game/hub/types";
+import { ShopModal } from "@/components/ShopModal";
+import { createPortals } from "@/game/hub/map";
 
 declare global {
   interface Window {
@@ -20,7 +27,7 @@ declare global {
   }
 }
 
-type Mode = "title" | "play" | "pause" | "win";
+type Mode = "title" | "hub" | "play" | "pause" | "win";
 
 type Hud = {
   hearts: number;
@@ -110,9 +117,21 @@ export function OrsoGame() {
   const [save, setSave] = useState<SaveData>(emptySave);
   const [muted, setMuted] = useState(false);
   const [touch, setTouch] = useState(false);
+  const [shopOpen, setShopOpen] = useState(false);
+  const [roomsModalOpen, setRoomsModalOpen] = useState(false);
+  const [hubAction, setHubAction] = useState<{
+    type: "portal" | "npc" | "shop";
+    label: string;
+    icon: string;
+    locked?: boolean;
+  } | null>(null);
   const bag = useRef({
     mode: "title" as Mode,
     sim: null as Sim | null,
+    hub: null as HubState | null,
+    hubTap: null as { wx: number; wy: number } | null,
+    hubInteractQueue: false,
+    lastHubActionKey: "",
     art: null as Art | null,
     keys: new Set<string>(),
     injected: new Set<string>(),
@@ -200,8 +219,10 @@ export function OrsoGame() {
         e.code === "KeyA" ||
         e.code === "KeyD" ||
         e.code === "KeyW" ||
-        e.code === "KeyS";
-      if ((m === "play" || m === "pause") && gameKey) e.preventDefault();
+        e.code === "KeyS" ||
+        e.code === "KeyE" ||
+        e.code === "Enter";
+      if ((m === "play" || m === "pause" || m === "hub") && gameKey) e.preventDefault();
       if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") bag.current.jumpDownAt = performance.now();
       if (e.code === "Escape" || e.code === "KeyP") {
         if (m === "play") {
@@ -211,6 +232,9 @@ export function OrsoGame() {
           bag.current.wasJump = bag.current.keys.has("Space") || bag.current.keys.has("ArrowUp") || bag.current.keys.has("KeyW");
           bag.current.mode = "play";
           setMode("play");
+        } else if (m === "hub") {
+          bag.current.mode = "title";
+          setMode("title");
         }
       }
     };
@@ -247,6 +271,91 @@ export function OrsoGame() {
       last = now;
       const b = bag.current;
       b.titleT += dt;
+
+      // Aggiornamento Hub Overworld se attivo
+      if (b.mode === "hub" && b.hub) {
+        const has = (code: string) => b.keys.has(code) || b.injected.has(code);
+        let screenDx = 0;
+        let screenDy = 0;
+        if (has("KeyA") || has("ArrowLeft")) screenDx -= 1;
+        if (has("KeyD") || has("ArrowRight")) screenDx += 1;
+        if (has("KeyW") || has("ArrowUp")) screenDy -= 1;
+        if (has("KeyS") || has("ArrowDown")) screenDy += 1;
+
+        let dx = 0;
+        let dy = 0;
+        if (screenDx !== 0 || screenDy !== 0) {
+          dx = screenDx / 64 + screenDy / 32;
+          dy = screenDy / 32 - screenDx / 64;
+        }
+
+        const interact = has("Space") || has("Enter") || has("KeyE") || b.hubInteractQueue;
+        b.hubInteractQueue = false;
+
+        const hubEv = stepHub(
+          b.hub,
+          {
+            dx,
+            dy,
+            interact,
+            tapWorld: b.hubTap,
+          },
+          dt,
+        );
+        b.hubTap = null;
+
+        if (hubEv.bounce) audio.bounce();
+        if (hubEv.kick) audio.bump();
+
+        if (interact) {
+          const res = interactHub(b.hub, audio);
+          if (res.enterLevel !== undefined) {
+            begin(res.enterLevel);
+            return;
+          }
+          if (res.openShop) {
+            setShopOpen(true);
+          }
+        }
+
+        // Rilevamento vicinanza per il pulsante d'azione touch
+        const portal = b.hub.activePortal;
+        const shop = b.hub.nearShop;
+        const npc = b.hub.activeNpc;
+        let key = "";
+        if (portal) key = `p:${portal.index}:${portal.locked}`;
+        else if (shop) key = "shop";
+        else if (npc) key = `n:${npc.id}`;
+
+        if (key !== b.lastHubActionKey) {
+          b.lastHubActionKey = key;
+          if (portal) {
+            setHubAction({
+              type: "portal",
+              label: portal.locked ? "STANZA CHIUSA 🔒" : `ENTRA IN ${portal.name} ▶`,
+              icon: portal.icon,
+              locked: portal.locked,
+            });
+          } else if (shop) {
+            setHubAction({
+              type: "shop",
+              label: "APRI IL BAZAR DELLE STELLINE",
+              icon: "🛍️",
+              locked: false,
+            });
+          } else if (npc) {
+            setHubAction({
+              type: "npc",
+              label: `PARLA CON ${npc.name}`,
+              icon: "💬",
+              locked: false,
+            });
+          } else {
+            setHubAction(null);
+          }
+        }
+      }
+
       const sim = b.sim;
       if (sim && (b.mode === "play" || b.mode === "win")) {
         acc += dt;
@@ -280,11 +389,13 @@ export function OrsoGame() {
             setMode("win");
             audio.win();
             audio.speak(`${cheer()} ${sim.winTitle}! ${sim.winText}`);
+            const earnedStars = sim.player.stars;
             const next = {
               ...b.save,
               best: [...b.save.best],
               cleared: [...b.save.cleared],
               ducks: [...b.save.ducks],
+              starsWallet: (b.save.starsWallet ?? 0) + earnedStars,
             };
             next.best[sim.levelIndex] = Math.max(next.best[sim.levelIndex] ?? 0, sim.player.stars);
             next.cleared[sim.levelIndex] = true;
@@ -338,10 +449,12 @@ export function OrsoGame() {
       if (!b.art) {
         ctx.fillStyle = "#fff4e4";
         ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-      } else if (b.mode === "title" || !sim) {
+      } else if (b.mode === "title") {
         renderTitle(ctx, b.art, b.titleT);
-      } else {
-        renderWorld(ctx, sim, b.art, b.cam.x, b.cam.y);
+      } else if (b.mode === "hub" && b.hub) {
+        renderHub(ctx, b.hub, b.art, b.save.equippedHat);
+      } else if (sim) {
+        renderWorld(ctx, sim, b.art, b.cam.x, b.cam.y, b.save.equippedHat, b.save.equippedPowder);
       }
       audio.tick();
       raf = requestAnimationFrame(frame);
@@ -375,7 +488,7 @@ export function OrsoGame() {
         if (cancelled) return;
         if (panel >= 3) {
           setStory(false);
-          begin(0);
+          goToHub(0);
         } else {
           setPanel((p) => p + 1);
         }
@@ -397,10 +510,121 @@ export function OrsoGame() {
   function advanceStory() {
     if (panel >= 3) {
       setStory(false);
-      begin(0);
+      goToHub(0);
       return;
     }
     setPanel(panel + 1);
+  }
+
+  function goToHub(returnPortalIndex: number | null = null) {
+    const h = createHub(bag.current.save, returnPortalIndex);
+    bag.current.hub = h;
+    bag.current.mode = "hub";
+    bag.current.hubTap = null;
+    bag.current.hubInteractQueue = false;
+    bag.current.lastHubActionKey = "";
+    bag.current.keys.clear();
+    bag.current.pointers.clear();
+    bag.current.jumps.clear();
+    bag.current.jumpQueue = 0;
+    setMode("hub");
+    setWin(null);
+    setHelp(false);
+    setTrophies(false);
+    setShopOpen(false);
+    setRoomsModalOpen(false);
+    setHubAction(null);
+    bag.current.audio?.unlock();
+    bag.current.audio?.startMusic();
+    if (returnPortalIndex !== null) {
+      bag.current.audio?.speak("Bravissima! Bentornata nel cortile! Scegli la prossima stanza!");
+    } else {
+      bag.current.audio?.speak(`Ciao ${PLAYER_NAME}! Esplora il cortile e tocca dove vuoi andare!`);
+    }
+  }
+
+  function triggerHubAction() {
+    if (!bag.current.hub) return;
+    const res = interactHub(bag.current.hub, bag.current.audio);
+    if (res.enterLevel !== undefined) {
+      begin(res.enterLevel);
+      return;
+    }
+    if (res.openShop) {
+      setShopOpen(true);
+      return;
+    }
+  }
+
+  function onCanvasPointerDown(e: ReactPointerEvent<HTMLCanvasElement>) {
+    bag.current.audio?.unlock();
+    if (bag.current.mode !== "hub" || !bag.current.hub) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+
+    const scale = Math.min(canvas.width / VIEW_W, canvas.height / VIEW_H);
+    const wide = canvas.width / canvas.height > VIEW_W / VIEW_H;
+    const ox = (canvas.width - VIEW_W * scale) / 2;
+    const oy = wide ? (canvas.height - VIEW_H * scale) / 2 : (canvas.height - VIEW_H * scale) * 0.12;
+
+    const canvasX = (clientX - rect.left) * (canvas.width / rect.width);
+    const canvasY = (clientY - rect.top) * (canvas.height / rect.height);
+
+    const sx = (canvasX - ox) / scale;
+    const sy = (canvasY - oy) / scale;
+
+    const hub = bag.current.hub;
+    const centerSx = VIEW_W / 2;
+    const centerSy = VIEW_H / 2;
+    const camX = hub.cam.x - centerSx;
+    const camY = hub.cam.y - centerSy;
+
+    // Se c'è un dialogo aperto da un NPC, qualsiasi tocco lo fa avanzare!
+    if (hub.dialogue) {
+      const res = interactHub(hub, bag.current.audio);
+      if (res.enterLevel !== undefined) begin(res.enterLevel);
+      if (res.openShop) setShopOpen(true);
+      return;
+    }
+
+    // Se l'orsetto è vicino alla porta e il tocco è sull'icona/pulsante della porta
+    if (hub.activePortal) {
+      const portalScreen = worldToScreen(hub.activePortal.wx, hub.activePortal.wy, 0, camX, camY);
+      if (Math.hypot(sx - portalScreen.sx, sy - (portalScreen.sy - 80)) < 70) {
+        const res = interactHub(hub, bag.current.audio);
+        if (res.enterLevel !== undefined) {
+          begin(res.enterLevel);
+          return;
+        }
+      }
+    }
+
+    // Se l'orsetto è vicino all'NPC o allo Shop e il tocco è su di loro
+    if (hub.activeNpc) {
+      const npcScreen = worldToScreen(hub.activeNpc.wx, hub.activeNpc.wy, 0, camX, camY);
+      if (Math.hypot(sx - npcScreen.sx, sy - (npcScreen.sy - 50)) < 65) {
+        const res = interactHub(hub, bag.current.audio);
+        if (res.enterLevel !== undefined) {
+          begin(res.enterLevel);
+          return;
+        }
+        if (res.openShop) {
+          setShopOpen(true);
+          return;
+        }
+        return;
+      }
+    }
+
+    // Altrimenti: Tap-to-Move! Converte le coordinate schermo nelle coordinate mondo isometriche 2:1
+    const { wx, wy } = screenToWorld(sx, sy, camX, camY);
+    const clampedWx = Math.max(2.5, Math.min(21.5, wx));
+    const clampedWy = Math.max(2.5, Math.min(21.5, wy));
+    bag.current.hubTap = { wx: clampedWx, wy: clampedWy };
   }
 
   function begin(index: number) {
@@ -477,7 +701,12 @@ export function OrsoGame() {
 
   return (
     <div className="relative h-dvh w-full overflow-hidden bg-cream text-cocoa">
-      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" aria-hidden />
+      <canvas
+        ref={canvasRef}
+        onPointerDown={onCanvasPointerDown}
+        className="absolute inset-0 h-full w-full cursor-pointer"
+        aria-hidden
+      />
       <div className="pointer-events-none relative z-10 flex h-full flex-col">
         {mode === "title" ? (
           <div className="pointer-events-auto flex h-full items-center justify-center overflow-y-auto px-3 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
@@ -491,10 +720,11 @@ export function OrsoGame() {
                 </div>
                 <button
                   type="button"
-                  className="min-h-14 w-full rounded-full bg-peach px-6 font-display text-2xl text-cocoa font-bold uppercase tracking-wider shadow-md hover:scale-[1.02] active:scale-95 transition-transform"
-                  onClick={openStory}
+                  className="min-h-14 w-full rounded-full bg-peach px-6 font-display text-2xl text-cocoa font-bold uppercase tracking-wider shadow-md hover:scale-[1.02] active:scale-95 transition-transform flex items-center justify-center gap-2"
+                  onClick={() => goToHub(null)}
                 >
-                  ▶ GIOCHIAMO!
+                  <span>🏡</span>
+                  <span>ENTRA NEL CORTILE! ▶</span>
                 </button>
                 <div className="grid w-full grid-cols-4 gap-2">
                   {NAMES.map((name, i) => {
@@ -574,6 +804,87 @@ export function OrsoGame() {
                   </p>
                 ) : null}
               </div>
+            </div>
+          </div>
+        ) : null}
+
+        {mode === "hub" ? (
+          <div className="pointer-events-none relative z-30 flex h-full flex-col justify-between p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            {/* Top Bar dell'Hub */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="pointer-events-auto flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    bag.current.mode = "title";
+                    setMode("title");
+                  }}
+                  className="min-h-11 px-3.5 rounded-full bg-foam/95 text-cocoa shadow-md flex items-center gap-1.5 font-display text-xs sm:text-sm uppercase font-bold hover:scale-105 active:scale-95 transition-transform border border-cocoa/10"
+                >
+                  <House className="h-4 w-4" />
+                  <span>TITOLO</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRoomsModalOpen(true)}
+                  className="min-h-11 px-3.5 rounded-full bg-foam/95 text-cocoa shadow-md flex items-center gap-1.5 font-display text-xs sm:text-sm uppercase font-bold hover:scale-105 active:scale-95 transition-transform border border-cocoa/10"
+                >
+                  <span>📋</span>
+                  <span>STANZE</span>
+                </button>
+              </div>
+
+              <div className="pointer-events-auto flex items-center gap-2">
+                {/* Portafoglio Stelline & Bottone Bazar */}
+                <button
+                  type="button"
+                  onClick={() => setShopOpen(true)}
+                  className="min-h-11 px-3.5 sm:px-4 rounded-full bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 text-amber-950 font-display font-bold shadow-md flex items-center gap-2 hover:scale-105 active:scale-95 transition-transform text-xs sm:text-sm border-2 border-amber-400"
+                >
+                  <span className="text-base sm:text-lg">⭐</span>
+                  <span className="text-sm sm:text-base font-extrabold">{save.starsWallet}</span>
+                  <span className="bg-amber-500/20 text-amber-900 text-[11px] sm:text-xs px-2 py-0.5 rounded-full font-bold ml-0.5">
+                    🛍️ BAZAR
+                  </span>
+                </button>
+
+                {/* Audio Mute/Unmute */}
+                <button
+                  type="button"
+                  className="grid h-11 w-11 place-items-center rounded-full bg-foam shadow-md border border-cocoa/10 hover:scale-105 active:scale-95 transition-transform"
+                  onClick={toggleMute}
+                  aria-label={muted ? "Attiva il suono" : "Silenzia"}
+                >
+                  {muted ? <VolumeX /> : <Volume2 />}
+                </button>
+              </div>
+            </div>
+
+            {/* Bottom Floating Action Prompt / Touch Button */}
+            <div className="flex flex-col items-center gap-2">
+              {hubAction ? (
+                <button
+                  type="button"
+                  disabled={hubAction.locked}
+                  onClick={triggerHubAction}
+                  className={`pointer-events-auto min-h-14 max-w-md w-full sm:w-auto px-7 rounded-full font-display text-lg sm:text-xl uppercase font-bold shadow-2xl flex items-center justify-center gap-2.5 transition-all active:scale-95 animate-bounce border-2 border-white ${
+                    hubAction.locked
+                      ? "bg-rose-500 text-white cursor-not-allowed opacity-90"
+                      : hubAction.type === "shop"
+                      ? "bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950"
+                      : hubAction.type === "portal"
+                      ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+                      : "bg-blue-500 hover:bg-blue-600 text-white"
+                  }`}
+                >
+                  <span className="text-2xl">{hubAction.icon}</span>
+                  <span>{hubAction.label}</span>
+                </button>
+              ) : (
+                <div className="pointer-events-none rounded-full bg-cocoa/65 backdrop-blur-sm px-4 py-1.5 text-white font-display text-xs sm:text-sm uppercase font-bold tracking-wider shadow">
+                  👆 TOCCA DOVE VUOI ANDARE NEL CORTILE!
+                </div>
+              )}
             </div>
           </div>
         ) : null}
@@ -699,6 +1010,13 @@ export function OrsoGame() {
                 <button
                   type="button"
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-cream font-display text-xl uppercase font-bold shadow-sm active:scale-95 transition-transform"
+                  onClick={() => goToHub(bag.current.sim?.levelIndex ?? null)}
+                >
+                  🏡 CORTILE
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-cream font-display text-xl uppercase font-bold shadow-sm active:scale-95 transition-transform"
                   onClick={() => {
                     bag.current.mode = "title";
                     bag.current.keys.clear();
@@ -733,6 +1051,13 @@ export function OrsoGame() {
                 <p className="text-sm uppercase font-bold text-cocoa/70">NE MANCANO {win.left} LUNGO LA STRADA</p>
               )}
               <div className="mt-4 flex flex-col gap-2">
+                <button
+                  type="button"
+                  className="min-h-12 rounded-full bg-mint text-cocoa font-display text-xl uppercase font-bold shadow active:scale-95 transition-transform flex items-center justify-center gap-2"
+                  onClick={() => goToHub(win.index)}
+                >
+                  🏡 TORNA NEL CORTILE
+                </button>
                 {win.index < NAMES.length - 1 ? (
                   <button
                     type="button"
@@ -819,7 +1144,7 @@ export function OrsoGame() {
                   onClick={(e) => {
                     e.stopPropagation();
                     setStory(false);
-                    begin(0);
+                    goToHub(0);
                   }}
                 >
                   SALTA ⏩
@@ -934,6 +1259,89 @@ export function OrsoGame() {
                 onClick={() => setHelp(false)}
               >
                 HO CAPITO! ▶
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {shopOpen ? (
+          <ShopModal
+            save={save}
+            onSaveChange={(next) => {
+              setSave(next);
+              bag.current.save = next;
+              writeSave(next);
+              if (bag.current.hub) {
+                bag.current.hub.portals = createPortals(next);
+              }
+            }}
+            onClose={() => setShopOpen(false)}
+            audio={bag.current.audio}
+          />
+        ) : null}
+
+        {roomsModalOpen ? (
+          <div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-cocoa/50 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+            <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl bg-cream border-4 border-amber-300 p-5 shadow-2xl text-center">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">📋</span>
+                  <h3 className="font-display text-2xl uppercase font-bold text-cocoa">SCEGLI LA STANZA</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRoomsModalOpen(false)}
+                  className="grid h-8 w-8 place-items-center rounded-full bg-white text-cocoa shadow hover:bg-white/80 active:scale-95"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {NAMES.map((name, i) => {
+                  const locked = i > save.unlocked;
+                  const stars = save.best[i] ?? 0;
+                  const hasDuck = !!save.ducks[i];
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      disabled={locked}
+                      onClick={() => {
+                        setRoomsModalOpen(false);
+                        begin(i);
+                      }}
+                      className={`min-h-16 rounded-2xl p-2 transition-all flex flex-col items-center justify-between border-2 ${
+                        locked
+                          ? "bg-cream/50 border-cocoa/10 opacity-50 cursor-not-allowed"
+                          : "bg-white border-amber-300 hover:border-amber-500 shadow-sm hover:scale-105 active:scale-95"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span className="text-xl leading-none">{ROOM_ICONS[i]}</span>
+                        {hasDuck ? <span className="text-xs">🦆</span> : null}
+                      </div>
+                      <span className="block font-display text-xs sm:text-sm leading-tight uppercase font-bold text-cocoa mt-1">
+                        {name}
+                      </span>
+                      <div className="flex items-center gap-0.5 text-xs mt-0.5">
+                        {locked ? (
+                          <span className="text-cocoa/60 font-bold text-[10px]">🔒 CHIUSO</span>
+                        ) : (
+                          <span className="text-amber-600 font-bold text-[10px]">
+                            {stars > 0 ? "⭐".repeat(Math.min(3, stars)) : "✨ APERTO"}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                onClick={() => setRoomsModalOpen(false)}
+                className="mt-5 px-6 py-2.5 rounded-full bg-peach font-display text-lg uppercase font-bold text-cocoa shadow active:scale-95"
+              >
+                CHIUDI ✕
               </button>
             </div>
           </div>
