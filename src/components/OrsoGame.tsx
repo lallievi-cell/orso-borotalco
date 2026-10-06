@@ -388,6 +388,15 @@ export function OrsoGame() {
             if (res.openShop) {
               setShopOpen(true);
             }
+            if (res.starReward && res.starReward > 0) {
+              const next = {
+                ...b.save,
+                starsWallet: (b.save.starsWallet ?? 0) + res.starReward,
+              };
+              b.save = next;
+              writeSave(next);
+              setSave(next);
+            }
           }
         }
 
@@ -661,6 +670,12 @@ export function OrsoGame() {
       setShopOpen(true);
       return;
     }
+    if (res.starReward && res.starReward > 0) {
+      const next = { ...save, starsWallet: save.starsWallet + res.starReward };
+      setSave(next);
+      bag.current.save = next;
+      writeSave(next);
+    }
   }
 
   function onCanvasPointerDown(e: ReactPointerEvent<HTMLCanvasElement>) {
@@ -756,7 +771,13 @@ export function OrsoGame() {
     const fountainScreen = worldToScreen(11.5, 11.5, 0, camX, camY);
     if (Math.hypot(sx - fountainScreen.sx, sy - (fountainScreen.sy - 35)) < 65) {
       if (Math.hypot(hub.player.wx - 11.5, hub.player.wy - 11.5) <= 2.6) {
-        interactHub(hub, bag.current.audio);
+        const res = interactHub(hub, bag.current.audio);
+        if (res.starReward && res.starReward > 0) {
+          const next = { ...save, starsWallet: save.starsWallet + res.starReward };
+          setSave(next);
+          bag.current.save = next;
+          writeSave(next);
+        }
         return;
       } else {
         bag.current.hubTap = { wx: 11.5, wy: 13.0 };

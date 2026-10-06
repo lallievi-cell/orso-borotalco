@@ -134,7 +134,7 @@ export function createHub(save: SaveData, returnPortalIndex: number | null = nul
 export function interactHub(
   hub: HubState,
   audio: AudioBus | null,
-): { enterLevel?: number; openShop?: boolean } {
+): { enterLevel?: number; openShop?: boolean; starReward?: number } {
   // 1. Se c'è già un dialogo aperto, avanza al testo successivo
   if (hub.dialogue) {
     hub.dialogue.lineIndex += 1;
@@ -187,14 +187,14 @@ export function interactHub(
     }
     hub.floatingMessages.push({
       id: Math.random(),
-      text: "DESIDERIO ESPRESSO! ⭐✨",
+      text: "DESIDERIO ESPRESSO! +1 ⭐✨",
       wx: 11.5,
       wy: 11.5,
       wz: 2.2,
       color: "#facc15",
       t: hub.t,
     });
-    return {};
+    return { starReward: 1 };
   }
 
   // 3c. Se l'orsetto è vicino al Cannocchiale Panoramico

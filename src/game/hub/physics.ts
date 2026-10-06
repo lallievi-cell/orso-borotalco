@@ -187,7 +187,20 @@ export function stepHub(hub: HubState, input: HubInput, dt: number): HubStepEven
     const kickX = (ball.wx - p.wx) / (distBall || 1);
     const kickY = (ball.wy - p.wy) / (distBall || 1);
 
-    if (p.wz > 0.25) {
+    const hoop = hub.toys.hoop;
+    const toHoopX = hoop.wx - ball.wx;
+    const toHoopY = hoop.wy - ball.wy;
+    const distToHoop = Math.hypot(toHoopX, toHoopY) || 1;
+    const dotHoop = kickX * (toHoopX / distToHoop) + kickY * (toHoopY / distToHoop);
+
+    // Se l'orsetto calcia nella direzione del canestro da basket (tiro assistito magico per bimbi!)
+    if (distToHoop < 5.8 && distToHoop > 0.8 && dotHoop > 0.32) {
+      const shotTime = Math.max(0.65, distToHoop / 5.2);
+      ball.vx = toHoopX / shotTime;
+      ball.vy = toHoopY / shotTime;
+      ball.vz = (1.85 - ball.wz) / shotTime + 0.5 * 16 * shotTime;
+      ball.squish = 0.5;
+    } else if (p.wz > 0.25) {
       // Colpo di testa / schiacciata saltando!
       ball.vx = kickX * 8.2 + p.vx * 0.7;
       ball.vy = kickY * 8.2 + p.vy * 0.7;
@@ -372,7 +385,7 @@ export function stepHub(hub: HubState, input: HubInput, dt: number): HubStepEven
   const hoop = hub.toys.hoop;
   if (hoop) {
     const dHoop = Math.hypot(ball.wx - hoop.wx, ball.wy - hoop.wy);
-    if (dHoop < hoop.radius * 0.7 && Math.abs(ball.wz - 1.65) < 0.45 && ball.vz < 0 && hub.t - hoop.lastScoreT > 1.2) {
+    if (dHoop < hoop.radius * 0.95 && Math.abs(ball.wz - 1.65) < 0.65 && ball.vz < 0.6 && hub.t - hoop.lastScoreT > 1.0) {
       hoop.score += 1;
       hoop.swishT = hub.t;
       hoop.lastScoreT = hub.t;
@@ -431,6 +444,12 @@ export function stepHub(hub: HubState, input: HubInput, dt: number): HubStepEven
     const dBallTree = Math.hypot(ball.wx - tree.wx, ball.wy - tree.wy);
     const ballHit = dBallTree < 1.2 && Math.hypot(ball.vx, ball.vy) > 1.4;
 
+    // Rigenerazione naturale delle mele dopo 9 secondi se sono finite
+    if (tree.apples < 3 && hub.t - tree.shakeT > 9.0) {
+      tree.apples += 1;
+      tree.shakeT = hub.t;
+    }
+
     if (((dPlayerTree < 1.35 && p.moving) || ballHit) && tree.apples > 0 && hub.t - tree.shakeT > 1.2) {
       tree.shakeT = hub.t;
       tree.apples -= 1;
@@ -459,9 +478,9 @@ export function stepHub(hub: HubState, input: HubInput, dt: number): HubStepEven
         apple.vx *= 0.68;
         apple.vy *= 0.68;
       }
-      // Raccolta mela da terra
+      // Raccolta mela da terra facilitata per bimbi
       const dEat = Math.hypot(p.wx - apple.wx, p.wy - apple.wy);
-      if (dEat < 0.65 && apple.wz <= 0.35) {
+      if (dEat < 0.85 && apple.wz <= 0.45) {
         tree.fallingApples.splice(ai, 1);
         ev.starReward = (ev.starReward ?? 0) + 1;
         hub.floatingMessages.push({
