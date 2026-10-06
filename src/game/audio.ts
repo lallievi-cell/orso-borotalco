@@ -1,3 +1,5 @@
+import { forSpeech, pickVoice, prosody, splitSentences } from "@/game/voice";
+
 // Dolce melodia carillon / ninna-nanna per bambini in scala pentatonica maggiore
 const LULLABY_NOTES = [
   523.25, 659.25, 783.99, 659.25, 880.0, 783.99, 659.25, 523.25,
@@ -105,42 +107,72 @@ export function createAudio() {
       ensure();
     },
     speak(text: string, onEnd?: () => void) {
+      const cleaned = forSpeech(text);
+      if (!cleaned) {
+        onEnd?.();
+        return;
+      }
       if (muted || typeof window === "undefined" || !("speechSynthesis" in window)) {
         if (onEnd) {
-          window.setTimeout(onEnd, Math.max(3500, text.length * 80));
+          window.setTimeout(onEnd, Math.max(2500, cleaned.length * 80));
         }
         return;
       }
       try {
         window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        currentUtterance = u;
-        u.lang = "it-IT";
-        u.pitch = 1.15; // Voce dolce e amichevole per bambini
-        u.rate = 0.90; // Ritmata e scandita bene
-        const voices = window.speechSynthesis.getVoices();
-        const itVoice = voices.find((v) => v.lang.startsWith("it") && !v.name.includes("Google") && !v.name.includes("eSpeak")) ||
-          voices.find((v) => v.lang.startsWith("it"));
-        if (itVoice) u.voice = itVoice;
+        const sentences = splitSentences(cleaned);
+        if (sentences.length === 0) {
+          onEnd?.();
+          return;
+        }
 
-        let done = false;
-        const complete = () => {
-          if (done) return;
-          done = true;
+        const voices = window.speechSynthesis.getVoices();
+        const selectedVoice = pickVoice(voices);
+
+        let sIndex = 0;
+        let finished = false;
+
+        const finishAll = () => {
+          if (finished) return;
+          finished = true;
           currentUtterance = null;
-          if (onEnd) onEnd();
+          onEnd?.();
         };
 
-        u.onend = complete;
-        u.onerror = complete;
+        const speakNext = () => {
+          if (finished) return;
+          if (sIndex >= sentences.length) {
+            finishAll();
+            return;
+          }
+          const s = sentences[sIndex]!;
+          sIndex += 1;
+          const u = new SpeechSynthesisUtterance(s);
+          currentUtterance = u;
+          u.lang = "it-IT";
+          if (selectedVoice) u.voice = selectedVoice as SpeechSynthesisVoice;
+          const p = prosody(s);
+          u.pitch = p.pitch;
+          u.rate = p.rate;
+
+          u.onend = () => {
+            // Breve respiro naturale di 120ms tra una frase e l'altra
+            window.setTimeout(speakNext, 120);
+          };
+          u.onerror = () => {
+            window.setTimeout(speakNext, 80);
+          };
+
+          window.speechSynthesis.speak(u);
+        };
 
         // Safety fallback timer nel caso in cui il browser blocchi il sintetizzatore
-        const maxWait = Math.max(5500, text.length * 110);
+        const maxWait = Math.max(6000, cleaned.length * 120);
         window.setTimeout(() => {
-          if (!done) complete();
+          if (!finished) finishAll();
         }, maxWait);
 
-        window.speechSynthesis.speak(u);
+        speakNext();
       } catch {
         if (onEnd) onEnd();
       }

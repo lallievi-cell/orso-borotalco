@@ -921,10 +921,14 @@ export function renderWorld(
 
   const p = sim.player;
   const inside = sim.finale > 0 && sim.finale < 1.05;
-  if (!inside && p.grounded) {
-    ctx.fillStyle = "rgba(90, 56, 40, 0.16)";
+  if (!inside) {
+    // Ombra morbida dinamica sul pavimento: sfuma e si rimpicciolisce con l'altezza
+    const distToFloor = Math.max(0, sim.groundY - (p.y + PH));
+    const shadowScale = Math.max(0.38, 1 - distToFloor / 380);
+    const shadowAlpha = Math.max(0.06, 0.22 * shadowScale);
+    ctx.fillStyle = `rgba(90, 56, 40, ${shadowAlpha})`;
     ctx.beginPath();
-    ctx.ellipse(p.x + PW / 2, p.y + PH, 20, 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(p.x + PW / 2, Math.min(sim.groundY, p.y + PH + 2), 22 * shadowScale, 6 * shadowScale, 0, 0, Math.PI * 2);
     ctx.fill();
   }
   if (p.powder > 0) {
@@ -944,17 +948,37 @@ export function renderWorld(
   if (!inside && sprite) {
     let sx = 1;
     let sy = 1;
+    let offsetY = 0;
+
     if (p.land > 0) {
-      sy = 0.86;
-      sx = 1.12;
-    } else if (!p.grounded && p.vy < 0) {
-      sy = 1.08;
-      sx = 0.94;
+      // Atterraggio: squash morbido elastico che si distende
+      const progress = p.land / 0.12;
+      sy = 1 - 0.22 * progress;
+      sx = 1 + 0.22 * progress;
+      offsetY = 4 * progress;
+    } else if (!p.grounded) {
+      if (p.vy < -100) {
+        // Salita nel salto: stretch verticale proporzionale allo slancio
+        const factor = Math.min(0.22, -p.vy / 2600);
+        sy = 1 + factor;
+        sx = 1 - factor * 0.6;
+      } else if (p.vy > 200) {
+        // Discesa veloce: allungamento dolce verso il basso
+        const factor = Math.min(0.15, p.vy / 3200);
+        sy = 1 + factor;
+        sx = 1 - factor * 0.5;
+      }
+    } else if (Math.abs(p.vx) > 30) {
+      // Corsa: respiro elastico a ritmo di passo
+      const bob = Math.sin(p.anim * 14) * 0.05;
+      sy = 1 + bob;
+      sx = 1 - bob * 0.5;
     }
+
     const blink = p.invuln > 0 && Math.floor(p.invuln * 10) % 2 === 0;
     ctx.save();
     ctx.globalAlpha = blink ? 0.45 : 1;
-    blit(ctx, sprite, p.x + PW / 2, p.y + PH + 10, 156, p.facing, sx, sy);
+    blit(ctx, sprite, p.x + PW / 2, p.y + PH + 10 + offsetY, 156, p.facing, sx, sy);
     ctx.restore();
   }
 

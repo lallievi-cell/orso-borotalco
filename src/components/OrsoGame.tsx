@@ -6,6 +6,7 @@ import { renderTitle, renderWorld } from "@/game/draw";
 import { coinTotal, coinsLeft, createSim, step, type Sim } from "@/game/sim";
 import { emptySave, loadSave, writeSave, type SaveData } from "@/game/save";
 import { PH, PW, VIEW_H, VIEW_W, type Input } from "@/game/types";
+import { cheer, PLAYER_NAME } from "@/game/player";
 
 declare global {
   interface Window {
@@ -43,24 +44,25 @@ type WinInfo = {
 };
 
 const ZERO: Input = { x: 0, jumpHeld: false, jumpPressed: false, down: false };
-const NAMES = ["Il salotto", "La cucina", "Il giardino", "Il corridoio", "La lavanderia", "La cameretta", "Il terrazzo", "Il bagno"];
+const ROOM_ICONS = ["🛋️", "🍳", "🌸", "🚪", "🧺", "🧸", "🫧", "🚽"];
+const NAMES = ["IL SALOTTO", "LA CUCINA", "IL GIARDINO", "IL CORRIDOIO", "LA LAVANDERIA", "LA CAMERETTA", "IL TERRAZZO", "IL BAGNO"];
 
 const STORY_PAGES = [
   {
-    title: "Mamma mia che urgenza!",
-    text: "All'Orso Borotalco scappa tantissimo la cacca e deve raggiungere il bagno!",
+    title: "MAMMA MIA CHE URGENZA!",
+    text: `All'Orso Borotalco scappa tantissimo la cacca! Aiutalo tu, ${PLAYER_NAME}!`,
   },
   {
-    title: "La nuvola magica!",
+    title: "LA NUVOLA MAGICA!",
     text: "Con una spolverata di borotalco profumato salta leggero tra cuscini e giochi!",
   },
   {
-    title: "Verso la porta azzurra!",
+    title: "VERSO LA PORTA AZZURRA!",
     text: "Attraversa stanze, giardini e terrazzi superando ostacoli birichini...",
   },
   {
-    title: "Il bagno è vicino!",
-    text: "Corri orsetto, la tazza del water ti aspetta per il grande sollievo!",
+    title: "IL BAGNO È VICINO!",
+    text: `Corri orsetto, ${PLAYER_NAME} ti porta dritto sulla tazza del water!`,
   },
 ];
 
@@ -259,7 +261,7 @@ export function OrsoGame() {
           if (ev.bump) audio.bump();
           if (ev.secret) {
             audio.secret();
-            audio.speak("Evviva! Hai trovato la paperella d'oro!");
+            audio.speak(`Evviva ${PLAYER_NAME}! Hai trovato la paperella d'oro!`);
             const next = {
               ...b.save,
               ducks: [...b.save.ducks],
@@ -277,7 +279,7 @@ export function OrsoGame() {
             b.mode = "win";
             setMode("win");
             audio.win();
-            audio.speak(sim.winTitle + "! " + sim.winText);
+            audio.speak(`${cheer()} ${sim.winTitle}! ${sim.winText}`);
             const next = {
               ...b.save,
               best: [...b.save.best],
@@ -483,30 +485,50 @@ export function OrsoGame() {
               <img src={asset("/sprites/bear/idle-1.png")} alt="" className="floaty h-20 w-auto object-contain sm:h-28 landscape:h-28" />
               <div className="flex w-full min-w-0 flex-1 flex-col items-center gap-2 landscape:items-stretch">
                 <div>
-                  <p className="font-display text-sm text-cocoa/70">Otto stanze, un bagno</p>
-                  <h1 className="font-display text-4xl leading-none sm:text-5xl landscape:text-4xl">Orso Borotalco</h1>
-                  <p className="mt-1 text-sm leading-snug sm:text-base landscape:hidden">Gli scappa la cacca. Aiutalo ad arrivare in bagno!</p>
+                  <p className="font-display text-sm tracking-wider uppercase text-amber-900/80 font-bold">CIAO {PLAYER_NAME.toUpperCase()}! • 8 STANZE, 1 BAGNO</p>
+                  <h1 className="font-display text-4xl leading-none sm:text-5xl uppercase tracking-wide">ORSO BOROTALCO</h1>
+                  <p className="mt-1 text-sm leading-snug sm:text-base font-bold text-amber-950/70">GLI SCAPPA LA CACCA! AIUTALO AD ARRIVARE IN BAGNO!</p>
                 </div>
                 <button
                   type="button"
-                  className="min-h-14 w-full rounded-full bg-peach px-6 font-display text-2xl text-cocoa"
+                  className="min-h-14 w-full rounded-full bg-peach px-6 font-display text-2xl text-cocoa font-bold uppercase tracking-wider shadow-md hover:scale-[1.02] active:scale-95 transition-transform"
                   onClick={openStory}
                 >
-                  Giochiamo
+                  ▶ GIOCHIAMO!
                 </button>
                 <div className="grid w-full grid-cols-4 gap-2">
                   {NAMES.map((name, i) => {
                     const locked = i > save.unlocked;
+                    const stars = save.best[i] ?? 0;
+                    const hasDuck = !!save.ducks[i];
                     return (
                       <button
                         key={name}
                         type="button"
                         disabled={locked}
                         onClick={() => begin(i)}
-                        className="min-h-12 rounded-2xl bg-cream px-1 py-1 text-sm disabled:opacity-40 landscape:min-h-10"
+                        className={`min-h-14 rounded-2xl p-1.5 transition-all flex flex-col items-center justify-between border-2 ${
+                          locked
+                            ? "bg-cream/50 border-cocoa/10 opacity-50 cursor-not-allowed"
+                            : "bg-cream border-peach/40 hover:border-peach shadow-sm hover:scale-[1.02] active:scale-95"
+                        } landscape:min-h-12`}
                       >
-                        <span className="block font-display text-base leading-tight">{name}</span>
-                        <span className="text-cocoa/70">{locked ? "chiuso" : save.best[i] ? `${save.best[i]} stelline` : "aperto"}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-lg leading-none">{ROOM_ICONS[i]}</span>
+                          {hasDuck ? <span className="text-xs">🦆</span> : null}
+                        </div>
+                        <span className="block font-display text-xs sm:text-sm leading-tight uppercase font-bold text-cocoa">
+                          {name}
+                        </span>
+                        <div className="flex items-center gap-0.5 text-xs">
+                          {locked ? (
+                            <span className="text-cocoa/60 font-bold text-[10px]">🔒 CHIUSO</span>
+                          ) : (
+                            <span className="text-amber-600 font-bold text-[10px]">
+                              {stars > 0 ? "⭐".repeat(Math.min(3, stars)) : "✨ APERTO"}
+                            </span>
+                          )}
+                        </div>
                       </button>
                     );
                   })}
@@ -514,26 +536,43 @@ export function OrsoGame() {
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   <button
                     type="button"
-                    className="min-h-11 rounded-full bg-gold/90 px-4 font-display text-cocoa shadow-sm active:scale-95 transition-transform flex items-center gap-1.5"
+                    className="min-h-11 rounded-full bg-gold/90 px-4 font-display text-cocoa shadow-sm active:scale-95 transition-transform flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs sm:text-sm"
                     onClick={() => {
                       setTrophies(true);
                       bag.current.audio?.unlock();
                       bag.current.audio?.secret();
                     }}
                   >
-                    <span>🦆</span> Paperelle ({save.ducks.filter(Boolean).length}/8)
+                    <span>🦆</span> PAPERELLE ({save.ducks.filter(Boolean).length}/8)
                   </button>
-                  <button type="button" className="min-h-11 rounded-full bg-mint px-4 text-cocoa" onClick={() => setHelp(true)}>
-                    Come si gioca
+                  <button
+                    type="button"
+                    className="min-h-11 rounded-full bg-mint px-4 text-cocoa font-display font-bold uppercase tracking-wider text-xs sm:text-sm shadow-sm active:scale-95 transition-transform"
+                    onClick={() => setHelp(true)}
+                  >
+                    ❓ COME SI GIOCA
                   </button>
-                  <button type="button" className="min-h-11 rounded-full bg-cream px-4 text-cocoa" onClick={openStory}>
-                    Storia
+                  <button
+                    type="button"
+                    className="min-h-11 rounded-full bg-cream px-4 text-cocoa font-display font-bold uppercase tracking-wider text-xs sm:text-sm shadow-sm active:scale-95 transition-transform"
+                    onClick={openStory}
+                  >
+                    📖 STORIA
                   </button>
-                  <button type="button" className="grid h-11 w-11 place-items-center rounded-full bg-cream" onClick={toggleMute} aria-label={muted ? "Attiva il suono" : "Silenzia"}>
+                  <button
+                    type="button"
+                    className="grid h-11 w-11 place-items-center rounded-full bg-cream shadow-sm"
+                    onClick={toggleMute}
+                    aria-label={muted ? "Attiva il suono" : "Silenzia"}
+                  >
                     {muted ? <VolumeX /> : <Volume2 />}
                   </button>
                 </div>
-                {save.cleared.every(Boolean) ? <p className="font-display text-mint">Tutti i bagni: che campione!</p> : null}
+                {save.cleared.every(Boolean) ? (
+                  <p className="font-display text-mint text-base uppercase font-bold tracking-wider">
+                    🎉 TUTTI I BAGNI TROVATI: BRAVISSIMA {PLAYER_NAME.toUpperCase()}! 👑
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>
@@ -635,36 +674,40 @@ export function OrsoGame() {
         {mode === "pause" && bag.current.sim ? (
           <div className="pointer-events-auto absolute inset-0 z-40 grid place-items-center overflow-y-auto bg-cocoa/35 p-4">
             <div className="w-full max-w-sm rounded-card bg-foam px-6 py-6 text-center shadow-lg">
-              <h2 className="font-display text-3xl">Pausa</h2>
-              <p className="mt-1 text-cocoa/80">Orso ti aspetta.</p>
+              <h2 className="font-display text-3xl uppercase font-bold tracking-wide">PAUSA</h2>
+              <p className="mt-1 text-cocoa/80 uppercase font-bold text-sm">ORSO TI ASPETTA!</p>
               <div className="mt-4 flex flex-col gap-2">
                 <button
                   type="button"
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-peach font-display text-xl"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-peach font-display text-xl uppercase font-bold shadow-sm active:scale-95 transition-transform"
                   onClick={() => {
                     bag.current.wasJump = true;
                     bag.current.mode = "play";
                     setMode("play");
                   }}
                 >
-                  <Play className="h-5 w-5" /> Continua
-                </button>
-                <button type="button" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-cream font-display text-xl" onClick={() => begin(bag.current.sim?.levelIndex ?? 0)}>
-                  <RotateCcw className="h-5 w-5" /> Da capo
+                  <Play className="h-5 w-5" /> CONTINUA
                 </button>
                 <button
                   type="button"
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-cream font-display text-xl"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-cream font-display text-xl uppercase font-bold shadow-sm active:scale-95 transition-transform"
+                  onClick={() => begin(bag.current.sim?.levelIndex ?? 0)}
+                >
+                  <RotateCcw className="h-5 w-5" /> DA CAPO
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-cream font-display text-xl uppercase font-bold shadow-sm active:scale-95 transition-transform"
                   onClick={() => {
                     bag.current.mode = "title";
                     bag.current.keys.clear();
                     bag.current.pointers.clear();
                     bag.current.jumps.clear();
-      bag.current.jumpQueue = 0;
+                    bag.current.jumpQueue = 0;
                     setMode("title");
                   }}
                 >
-                  <House className="h-5 w-5" /> Al titolo
+                  <House className="h-5 w-5" /> AL TITOLO
                 </button>
               </div>
             </div>
@@ -680,34 +723,46 @@ export function OrsoGame() {
                   <img src={asset("/sprites/toilet.png")} alt="Il bagno!" className="h-24 w-auto animate-bounce" />
                 ) : null}
               </div>
-              <h2 className="font-display text-4xl">{win.title}</h2>
-              <p className="mt-2 text-lg leading-snug">{win.text}</p>
-              <p className="mt-3 font-display text-2xl text-gold">Stelline {win.stars}</p>
-              {win.left === 0 ? <p className="text-sm">Hai preso tutte le stelline del livello!</p> : <p className="text-sm text-cocoa/70">Ne sono rimaste {win.left} lungo la strada.</p>}
+              <h2 className="font-display text-3xl sm:text-4xl uppercase font-bold tracking-wide text-cocoa">{win.title}</h2>
+              <p className="mt-2 text-base sm:text-lg leading-snug uppercase font-bold text-cocoa/90">{win.text}</p>
+              <p className="mt-3 font-display text-2xl text-gold uppercase font-bold">STELLINE: {win.stars}</p>
+              {win.left === 0 ? (
+                <p className="text-sm uppercase font-bold text-mint">HAI PRESO TUTTE LE STELLINE!</p>
+              ) : (
+                <p className="text-sm uppercase font-bold text-cocoa/70">NE MANCANO {win.left} LUNGO LA STRADA</p>
+              )}
               <div className="mt-4 flex flex-col gap-2">
                 {win.index < NAMES.length - 1 ? (
-                  <button type="button" className="min-h-12 rounded-full bg-peach font-display text-xl" onClick={() => begin(win.index + 1)}>
-                    Avanti
+                  <button
+                    type="button"
+                    className="min-h-12 rounded-full bg-peach font-display text-xl uppercase font-bold shadow active:scale-95 transition-transform"
+                    onClick={() => begin(win.index + 1)}
+                  >
+                    AVANTI ▶
                   </button>
                 ) : (
-                  <p className="font-display text-xl text-mint">Tutti i bagni! Che sollievo.</p>
+                  <p className="font-display text-xl text-mint uppercase font-bold">TUTTI I BAGNI! CHE SOLLIEVO!</p>
                 )}
-                <button type="button" className="min-h-12 rounded-full bg-cream font-display text-xl" onClick={() => begin(win.index)}>
-                  Gioca ancora
+                <button
+                  type="button"
+                  className="min-h-12 rounded-full bg-cream font-display text-xl uppercase font-bold shadow-sm active:scale-95 transition-transform"
+                  onClick={() => begin(win.index)}
+                >
+                  GIOCA ANCORA ↺
                 </button>
                 <button
                   type="button"
-                  className="min-h-12 rounded-full bg-cream font-display text-xl"
+                  className="min-h-12 rounded-full bg-cream font-display text-xl uppercase font-bold shadow-sm active:scale-95 transition-transform"
                   onClick={() => {
                     bag.current.mode = "title";
                     bag.current.keys.clear();
                     bag.current.pointers.clear();
                     bag.current.jumps.clear();
-      bag.current.jumpQueue = 0;
+                    bag.current.jumpQueue = 0;
                     setMode("title");
                   }}
                 >
-                  Al titolo
+                  AL TITOLO 🏠
                 </button>
               </div>
             </div>
@@ -836,20 +891,48 @@ export function OrsoGame() {
 
         {help ? (
           <div className="pointer-events-auto absolute inset-0 z-40 grid place-items-center overflow-y-auto bg-cocoa/40 p-4">
-            <div className="max-h-[85vh] w-full max-w-md overflow-auto rounded-card bg-foam px-6 py-5 shadow-lg">
-              <h2 className="font-display text-3xl">Come si gioca</h2>
-              <ul className="mt-3 space-y-2 text-base leading-snug">
-                <li>L'orso cammina da solo verso il bagno. Tocca lo schermo per farlo saltare, tieni premuto per un salto più alto. La freccia grande lo fa tornare indietro. Da tastiera: frecce o A e D, spazio per saltare.</li>
-                <li>In cucina l'olio fa scivolare e le pentole soffiano. In giardino aspetta l'acqua e salta le siepi. In lavanderia sali nei cesti. Sul terrazzo le bolle scoppiano.</li>
-                <li>Il cuscino a righe è una molla: ci salti sopra e voli. Alcuni tappeti si muovono da soli, salici sopra.</li>
-                <li>Spugna Birba cammina, Rotolino rotola, la Bolla vola, Paperotto l'anatra saltella. Saltagli sulla testa: spariscono e tu rimbalzi.</li>
-                <li>Il barattolo di borotalco fa una nuvoletta: nessuno ti tocca e salti più su.</li>
-                <li>La ciambella di sapone ti fa planare se tieni premuto il salto.</li>
-                <li>Lo spazzolino ti fa correre. Il cuoricino di cotone è una vita in più.</li>
-                <li>Dieci stelline ridanno un cuoricino, se ne manca uno. La porta con scritto BAGNO è il traguardo.</li>
-              </ul>
-              <button type="button" className="mt-4 min-h-12 w-full rounded-full bg-peach font-display text-xl" onClick={() => setHelp(false)}>
-                Ho capito
+            <div className="max-h-[85vh] w-full max-w-md overflow-auto rounded-card bg-foam px-6 py-5 shadow-2xl border-2 border-mint/40 text-cocoa">
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-3xl uppercase font-bold">COME SI GIOCA</h2>
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-full bg-peach font-display text-xs font-bold uppercase shadow-sm hover:scale-105 active:scale-95 transition-transform"
+                  onClick={() => {
+                    bag.current.audio?.unlock();
+                    bag.current.audio?.speak("Tocca lo schermo per saltare! Orso cammina da solo verso il bagno. Salta sui cuscini morbidi, raccogli le stelline d'oro e cerca la paperella segreta!");
+                  }}
+                >
+                  🔊 ASCOLTA
+                </button>
+              </div>
+              <div className="mt-4 space-y-3 font-display uppercase font-bold text-sm sm:text-base leading-snug">
+                <div className="flex items-start gap-2.5 p-2 rounded-xl bg-cream/70">
+                  <span className="text-2xl">🐾</span>
+                  <p>TOCCA LO SCHERMO O IL TASTO ROSA PER SALTARE!</p>
+                </div>
+                <div className="flex items-start gap-2.5 p-2 rounded-xl bg-cream/70">
+                  <span className="text-2xl">🧸</span>
+                  <p>L'ORSO CAMMINA DA SOLO VERSO IL BAGNO! CON ◀ TORNI INDIETRO.</p>
+                </div>
+                <div className="flex items-start gap-2.5 p-2 rounded-xl bg-cream/70">
+                  <span className="text-2xl">🛏️</span>
+                  <p>I CUSCINI A RIGHE TI FANNO RIMBALZARE IN ALTO!</p>
+                </div>
+                <div className="flex items-start gap-2.5 p-2 rounded-xl bg-cream/70">
+                  <span className="text-2xl">⭐</span>
+                  <p>RACCOGLI LE STELLINE E CERCA LA PAPERELLA D'ORO 🦆 IN OGNI STANZA!</p>
+                </div>
+                <div className="flex items-start gap-2.5 p-2 rounded-xl bg-cream/70">
+                  <span className="text-2xl">🚽</span>
+                  <p>ARRIVA ALLA PORTA DEL BAGNO PER VINCERE!</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="mt-5 min-h-12 w-full rounded-full bg-peach font-display text-xl font-bold uppercase shadow active:scale-95 transition-transform"
+                onClick={() => setHelp(false)}
+              >
+                HO CAPITO! ▶
               </button>
             </div>
           </div>

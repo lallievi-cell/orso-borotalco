@@ -1,4 +1,5 @@
 import type { Coin, Enemy, EnemyKind, Level, Power, PowerKind, Secret, Solid, SolidKind } from "@/game/types";
+import { PLAYER_NAME } from "@/game/player";
 
 const H = 640;
 const GROUND = 500;
@@ -158,8 +159,8 @@ function salotto(): Level {
     index: 0,
     name: "Il salotto",
     hint: "Tocca per saltare!",
-    say: "Il salotto. Tocca lo schermo per saltare!",
-    winTitle: "Bravissima!",
+    say: `Il salotto. Tocca lo schermo per saltare, ${PLAYER_NAME}!`,
+    winTitle: `Bravissima ${PLAYER_NAME}!`,
     winText: "Primo bagno trovato!",
     theme: "salotto",
     w,
@@ -503,8 +504,8 @@ function bagno(): Level {
     index: 7,
     name: "Il bagno",
     hint: "Su per le scale! In cima c'è il bagno.",
-    say: "Il bagno! Su per le scale, ci siamo quasi!",
-    winTitle: "Che sollievo!",
+    say: `Il bagno! Su per le scale ${PLAYER_NAME}, ci siamo quasi!`,
+    winTitle: `Evviva ${PLAYER_NAME}!`,
     winText: "Orso Borotalco ce l'ha fatta!",
     theme: "bagno",
     w,
