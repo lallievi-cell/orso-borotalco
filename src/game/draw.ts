@@ -478,9 +478,229 @@ function drawSetPiece(ctx: CanvasRenderingContext2D, s: Solid, t: number) {
   ctx.restore();
 }
 
+function drawToyBlocks(ctx: CanvasRenderingContext2D, s: Solid, _t: number) {
+  // Proporzione cubica: calcola il numero di blocchi in modo che ciascuno sia un vero cubo compatto (1:1)
+  const cubeTargetW = Math.max(38, s.h * 0.78);
+  const n = Math.max(1, Math.round(s.w / cubeTargetW));
+  const bw = s.w / n;
+
+  // Tavolozza pastello ricca e calda (stile giocattoli in legno artigianali Montessori / Melissa & Doug)
+  const palettes = [
+    { top: "#ffaec2", bottom: "#f186a1", border: "#de6484" }, // Rosa confetto
+    { top: "#9de0ce", bottom: "#6bc4ac", border: "#46a58d" }, // Menta salvia
+    { top: "#ffe589", bottom: "#f7c74c", border: "#dba01f" }, // Miele dorato
+    { top: "#a5d9fe", bottom: "#70bcf4", border: "#479bda" }, // Celeste fiordaliso
+    { top: "#dfc6fc", bottom: "#bd99f6", border: "#9f71da" }, // Lilla lavanda
+    { top: "#ffd4ab", bottom: "#faa870", border: "#e48443" }, // Pesca caldo
+  ];
+
+  // Le lettere compongono "C - E - L - E - S - T - E" in chiaro stampatello per la bimba
+  const labels = ["C", "E", "L", "E", "S", "T", "E", "★", "♥", "A", "B", "1", "2"];
+
+  // Indice base ordinato: il primo blocco del gioco (x=720) parte da "C" ed "E" (l'inizio di CELESTE!)
+  const blockOrder = Math.max(0, Math.floor((s.x - 500) / 1000));
+  const baseIdx = (blockOrder * 2) % labels.length;
+
+  for (let i = 0; i < n; i++) {
+    const gap = 3;
+    const bx = s.x + i * bw + gap * 0.5;
+    const bWidth = bw - gap;
+    const by = s.y;
+    const bHeight = s.h;
+
+    // Altezza della faccia superiore 3D in prospettiva zenitale
+    const topH = Math.round(Math.min(13, bHeight * 0.22));
+    const frontY = by + topH;
+    const frontH = bHeight - topH;
+
+    const pal = palettes[(baseIdx + i) % palettes.length]!;
+    const lbl = labels[(baseIdx + i) % labels.length]!;
+
+    ctx.save();
+
+    // 1. OMBRA DI CONTATTO A TERRA (sagomata morbida proprio sotto la base del cubo sul pavimento)
+    const shadowGrad = ctx.createRadialGradient(
+      bx + bWidth * 0.5, by + bHeight + 2, 2,
+      bx + bWidth * 0.5, by + bHeight + 2, bWidth * 0.65
+    );
+    shadowGrad.addColorStop(0, "rgba(55, 26, 12, 0.40)");
+    shadowGrad.addColorStop(0.5, "rgba(75, 36, 16, 0.18)");
+    shadowGrad.addColorStop(1, "rgba(75, 36, 16, 0)");
+    ctx.fillStyle = shadowGrad;
+    ctx.beginPath();
+    ctx.ellipse(bx + bWidth * 0.5, by + bHeight + 2, bWidth * 0.56, 5.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. CORPO PRINCIPALE IN LEGNO MASSELLO (faggio/acero naturale levigato e smussato)
+    const woodFront = ctx.createLinearGradient(bx, frontY, bx, by + bHeight);
+    woodFront.addColorStop(0, "#f8eedc"); // faggio chiaro
+    woodFront.addColorStop(0.3, "#ebd3ab");
+    woodFront.addColorStop(0.7, "#debc88");
+    woodFront.addColorStop(1, "#c3965d"); // ombra calda alla base
+    ctx.fillStyle = woodFront;
+    roundRect(ctx, bx, frontY, bWidth, frontH, 7);
+    ctx.fill();
+
+    // Sottile venatura e bordo del legno
+    ctx.strokeStyle = "rgba(160, 110, 55, 0.35)";
+    ctx.lineWidth = 1;
+    roundRect(ctx, bx, frontY, bWidth, frontH, 7);
+    ctx.stroke();
+
+    // 3. FACCIA SUPERIORE 3D (prospettiva zenitale: la superficie calpestabile dove l'orsetto atterra)
+    const woodTop = ctx.createLinearGradient(bx, by, bx, frontY);
+    woodTop.addColorStop(0, "#fffcf2"); // luce zenitale pura
+    woodTop.addColorStop(0.5, "#f5e4c0");
+    woodTop.addColorStop(1, "#ebd1a4");
+    ctx.fillStyle = woodTop;
+
+    ctx.beginPath();
+    ctx.moveTo(bx + 5, by + 1);
+    ctx.lineTo(bx + bWidth - 5, by + 1);
+    ctx.quadraticCurveTo(bx + bWidth - 0.5, by + 1, bx + bWidth - 0.5, by + 4);
+    ctx.lineTo(bx + bWidth, frontY);
+    ctx.lineTo(bx, frontY);
+    ctx.lineTo(bx + 0.5, by + 4);
+    ctx.quadraticCurveTo(bx + 0.5, by + 1, bx + 5, by + 1);
+    ctx.closePath();
+    ctx.fill();
+
+    // Riflesso brillante sullo spigolo superiore (chamfer highlight)
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(bx + 2, frontY);
+    ctx.lineTo(bx + bWidth - 2, frontY);
+    ctx.stroke();
+
+    // Solco d'ombra naturale sotto lo spigolo frontale
+    ctx.strokeStyle = "rgba(110, 65, 25, 0.22)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(bx + 1, frontY + 1);
+    ctx.lineTo(bx + bWidth - 1, frontY + 1);
+    ctx.stroke();
+
+    // Delicato intaglio a stella giocattolo sulla superficie superiore in prospettiva
+    ctx.save();
+    ctx.translate(bx + bWidth * 0.5, by + topH * 0.5);
+    ctx.scale(1, 0.52);
+    ctx.fillStyle = "rgba(170, 115, 55, 0.28)";
+    drawStar5(ctx, 0, 0, topH * 0.45);
+    ctx.fill();
+    ctx.restore();
+
+    // 4. PANNELLO FRONTALE INCASSATO E LACCATO (vernice pastello satinata)
+    const pad = 4;
+    const px = bx + pad;
+    const py = frontY + pad;
+    const pw = bWidth - pad * 2;
+    const ph = frontH - pad * 2;
+    const pr = 5.5;
+
+    // Scanalatura d'incasso nel legno (profondità 3D)
+    ctx.fillStyle = "rgba(90, 45, 15, 0.22)";
+    roundRect(ctx, px, py - 0.5, pw, ph + 1.5, pr);
+    ctx.fill();
+
+    // Sfondo pastello sfumato
+    const panelGrad = ctx.createLinearGradient(px, py, px, py + ph);
+    panelGrad.addColorStop(0, pal.top);
+    panelGrad.addColorStop(1, pal.bottom);
+    ctx.fillStyle = panelGrad;
+    roundRect(ctx, px, py, pw, ph, pr);
+    ctx.fill();
+
+    // Cornice laccata rifinita
+    ctx.strokeStyle = pal.border;
+    ctx.lineWidth = 1.2;
+    roundRect(ctx, px, py, pw, ph, pr);
+    ctx.stroke();
+
+    // Bagliore satinato bombato in alto
+    const sheen = ctx.createLinearGradient(px, py, px, py + ph * 0.42);
+    sheen.addColorStop(0, "rgba(255, 255, 255, 0.52)");
+    sheen.addColorStop(1, "rgba(255, 255, 255, 0)");
+    ctx.fillStyle = sheen;
+    roundRect(ctx, px + 1, py + 1, pw - 2, ph * 0.42, pr - 1);
+    ctx.fill();
+
+    // Spigolo luminoso interno sul bordo inferiore del pannello
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.45)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(px + 3, py + ph - 1.5);
+    ctx.lineTo(px + pw - 3, py + ph - 1.5);
+    ctx.stroke();
+
+    // Smussature laterali 3D: spigolo di luce a sinistra, ombra di spessore a destra
+    const bevelLeft = ctx.createLinearGradient(bx, frontY, bx + 3, frontY);
+    bevelLeft.addColorStop(0, "rgba(255, 255, 255, 0.4)");
+    bevelLeft.addColorStop(1, "rgba(255, 255, 255, 0)");
+    ctx.fillStyle = bevelLeft;
+    roundRect(ctx, bx, frontY + 2, 3, frontH - 4, 3);
+    ctx.fill();
+
+    const bevelRight = ctx.createLinearGradient(bx + bWidth - 3, frontY, bx + bWidth, frontY);
+    bevelRight.addColorStop(0, "rgba(0, 0, 0, 0)");
+    bevelRight.addColorStop(1, "rgba(80, 40, 15, 0.2)");
+    ctx.fillStyle = bevelRight;
+    roundRect(ctx, bx + bWidth - 3, frontY + 2, 3, frontH - 4, 3);
+    ctx.fill();
+
+    // 5. LETTERA O SIMBOLO SCOLPITO IN 3D A FORTE RILIEVO (stampatello chiaro)
+    const cx = px + pw * 0.5;
+    const cy = py + ph * 0.5 + 0.5;
+    const fontSize = Math.max(19, Math.min(28, Math.round(ph * 0.62)));
+
+    ctx.font = `800 ${fontSize}px "Nunito", "Fredoka", sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    // a) Ombra profonda d'incisione/bassorilievo (verso il basso)
+    ctx.fillStyle = "rgba(45, 15, 20, 0.38)";
+    ctx.fillText(lbl, cx, cy + 2.2);
+
+    // b) Ombra intermedia
+    ctx.fillStyle = "rgba(65, 25, 30, 0.22)";
+    ctx.fillText(lbl, cx, cy + 1.2);
+
+    // c) Spigolo inferiore in forte luce (rilievo bianco splendente)
+    ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+    ctx.fillText(lbl, cx, cy + 0.8);
+
+    // d) Ombra interna superiore di scavo
+    ctx.fillStyle = "rgba(0, 0, 0, 0.12)";
+    ctx.fillText(lbl, cx, cy - 0.7);
+
+    // e) Superficie principale della lettera (bianco latte caldo brillante)
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(lbl, cx, cy);
+
+    // f) Riflesso satinato centrale superiore
+    ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
+    ctx.fillText(lbl, cx, cy - 0.3);
+
+    // 6. BORDO LATERALE DESTRO 3D TRA CUBI ADIACENTI
+    if (i < n - 1) {
+      const seamGrad = ctx.createLinearGradient(bx + bWidth, frontY, bx + bWidth + gap, frontY);
+      seamGrad.addColorStop(0, "rgba(80, 40, 15, 0.30)");
+      seamGrad.addColorStop(1, "rgba(80, 40, 15, 0)");
+      ctx.fillStyle = seamGrad;
+      ctx.fillRect(bx + bWidth - 0.5, frontY, gap + 1, frontH);
+    }
+
+    ctx.restore();
+  }
+}
+
 function drawPlatform(ctx: CanvasRenderingContext2D, s: Solid, t: number) {
   if (s.kind === "hedge" || s.kind === "basket" || s.kind === "cloud") {
     drawSetPiece(ctx, s, t);
+    return;
+  }
+  if (s.kind === "blocks") {
+    drawToyBlocks(ctx, s, t);
     return;
   }
   ctx.fillStyle = "rgba(70,42,28,0.16)";
@@ -516,43 +736,6 @@ function drawPlatform(ctx: CanvasRenderingContext2D, s: Solid, t: number) {
     ctx.lineTo(s.x + s.w / 2 + 11, s.y - 4);
     ctx.closePath();
     ctx.fill();
-  } else if (s.kind === "blocks") {
-    // Cubo giocattolo in legno pastello con bordi arrotondati e lettere/simboli A, B, C, ★
-    const n = Math.max(1, Math.round(s.w / 48));
-    const bw = s.w / n;
-    const colors = ["#f8b4c0", "#9ed9c8", "#fed776", "#a8d4ff"];
-    const labels = ["C", "E", "L", "E", "S", "T", "E", "★", "♥", "A", "B"];
-    for (let i = 0; i < n; i++) {
-      const bx = s.x + i * bw + 2;
-      const by = s.y + 2;
-      const bWidth = bw - 4;
-      const bHeight = s.h - 2;
-      const col = colors[(Math.floor(s.x * 0.05) + i) % colors.length]!;
-
-      // Ombra inferiore 3D
-      ctx.fillStyle = "rgba(0,0,0,0.12)";
-      roundRect(ctx, bx, by + 4, bWidth, bHeight, 10);
-      ctx.fill();
-
-      // Blocco principale
-      ctx.fillStyle = col;
-      roundRect(ctx, bx, by, bWidth, bHeight, 10);
-      ctx.fill();
-
-      // Bordo interno satinato
-      ctx.strokeStyle = "rgba(255,255,255,0.7)";
-      ctx.lineWidth = 2.5;
-      roundRect(ctx, bx + 3, by + 3, bWidth - 6, bHeight - 6, 7);
-      ctx.stroke();
-
-      // Lettera o simbolo inciso
-      const lbl = labels[(Math.floor(s.x * 0.03) + i) % labels.length]!;
-      ctx.fillStyle = "#ffffff";
-      ctx.font = '900 24px "Fredoka", "Nunito", sans-serif';
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(lbl, bx + bWidth / 2, by + bHeight / 2 + 1);
-    }
   } else if (s.kind === "bench") {
     ctx.fillStyle = "#a8683c";
     ctx.fillRect(s.x + 10, s.y + s.h - 4, 10, 16);
