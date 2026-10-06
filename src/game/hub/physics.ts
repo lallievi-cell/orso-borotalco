@@ -1,6 +1,7 @@
 import type { HubState, PortalInfo, NpcInfo } from "@/game/hub/types";
 import { getMapColliders } from "@/game/hub/map";
 import { worldToScreen } from "@/game/hub/coords";
+import { findPath, checkCollision } from "@/game/hub/nav";
 
 const PLAYER_SPEED = 5.6; // Unità mondo al secondo
 const PLAYER_RADIUS = 0.55;
@@ -23,9 +24,24 @@ export function stepHub(hub: HubState, input: HubInput, dt: number): HubStepEven
   hub.t += dt;
   const p = hub.player;
 
-  // 1. Gestione Tap-to-Move
+  // 1. Gestione Tap-to-Move con navigazione intelligente (evita ostacoli A*)
+  const colliders = getMapColliders();
   if (input.tapWorld) {
-    hub.tapTarget = { wx: input.tapWorld.wx, wy: input.tapWorld.wy, t: hub.t };
+    const path = findPath(
+      p.wx,
+      p.wy,
+      input.tapWorld.wx,
+      input.tapWorld.wy,
+      PLAYER_RADIUS,
+      colliders,
+    );
+    hub.tapTarget = {
+      wx: input.tapWorld.wx,
+      wy: input.tapWorld.wy,
+      t: hub.t,
+      path,
+      waypointIndex: 0,
+    };
   }
 
   let moveX = 0;
@@ -38,11 +54,26 @@ export function stepHub(hub: HubState, input: HubInput, dt: number): HubStepEven
     moveX = (input.dx / len) * PLAYER_SPEED;
     moveY = (input.dy / len) * PLAYER_SPEED;
   } else if (hub.tapTarget) {
-    const toX = hub.tapTarget.wx - p.wx;
-    const toY = hub.tapTarget.wy - p.wy;
+    const path = hub.tapTarget.path;
+    const wpIdx = hub.tapTarget.waypointIndex ?? 0;
+    const currentWp = path && wpIdx < path.length ? path[wpIdx]! : { wx: hub.tapTarget.wx, wy: hub.tapTarget.wy };
+
+    const toX = currentWp.wx - p.wx;
+    const toY = currentWp.wy - p.wy;
     const dist = Math.hypot(toX, toY);
-    if (dist < 0.25) {
-      hub.tapTarget = null;
+
+    if (dist < 0.28) {
+      if (path && wpIdx + 1 < path.length) {
+        hub.tapTarget.waypointIndex = wpIdx + 1;
+        const nextWp = path[wpIdx + 1]!;
+        const nextDist = Math.hypot(nextWp.wx - p.wx, nextWp.wy - p.wy);
+        if (nextDist > 0.05) {
+          moveX = ((nextWp.wx - p.wx) / nextDist) * PLAYER_SPEED;
+          moveY = ((nextWp.wy - p.wy) / nextDist) * PLAYER_SPEED;
+        }
+      } else {
+        hub.tapTarget = null;
+      }
     } else {
       moveX = (toX / dist) * PLAYER_SPEED;
       moveY = (toY / dist) * PLAYER_SPEED;
@@ -65,8 +96,6 @@ export function stepHub(hub: HubState, input: HubInput, dt: number): HubStepEven
   p.vy += (moveY - p.vy) * Math.min(1, 14 * dt);
 
   // 3. Risoluzione collisioni con i muri
-  const colliders = getMapColliders();
-
   // Movimento asse X con scivolamento
   const nextX = p.wx + p.vx * dt;
   if (!checkCollision(nextX, p.wy, PLAYER_RADIUS, colliders)) {
@@ -193,21 +222,3 @@ export function stepHub(hub: HubState, input: HubInput, dt: number): HubStepEven
   return ev;
 }
 
-function checkCollision(
-  x: number,
-  y: number,
-  r: number,
-  colliders: ReturnType<typeof getMapColliders>,
-): boolean {
-  // Cerchi
-  for (const c of colliders.circles) {
-    if (Math.hypot(x - c.x, y - c.y) < r + c.r) return true;
-  }
-  // Rettangoli
-  for (const rc of colliders.rects) {
-    if (x + r > rc.x1 && x - r < rc.x2 && y + r > rc.y1 && y - r < rc.y2) {
-      return true;
-    }
-  }
-  return false;
-}

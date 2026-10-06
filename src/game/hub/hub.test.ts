@@ -102,4 +102,57 @@ describe("Hub Engine and Simulation", () => {
     const action = interactHub(hub, null);
     expect(action.enterLevel).toBe(0);
   });
+
+  it("intelligently navigates around the central fountain obstacle", () => {
+    const save = emptySave();
+    const hub = createHub(save);
+
+    // Posiziona l'orsetto a nord della fontana centrale (11.5, 11.5 r=1.6)
+    hub.player.wx = 11.5;
+    hub.player.wy = 8.5;
+
+    // Tocco a sud della fontana (11.5, 14.5) - in linea retta c'è la fontana!
+    const input: HubInput = {
+      dx: 0,
+      dy: 0,
+      interact: false,
+      tapWorld: { wx: 11.5, wy: 14.5 },
+    };
+
+    stepHub(hub, input, 0.05);
+
+    expect(hub.tapTarget).not.toBeNull();
+    expect(hub.tapTarget?.path).toBeDefined();
+    // Il percorso intelligente deve avere waypoints intermedi per deviare attorno all'ostacolo
+    expect(hub.tapTarget!.path!.length).toBeGreaterThanOrEqual(1);
+
+    // Simula 4 secondi di camminata autonoma lungo il percorso deviato
+    for (let step = 0; step < 80; step++) {
+      stepHub(hub, { dx: 0, dy: 0, interact: false }, 0.05);
+      // L'orsetto non deve MAI entrare dentro il cerchio solido della fontana
+      const distFountain = Math.hypot(hub.player.wx - 11.5, hub.player.wy - 11.5);
+      expect(distFountain).toBeGreaterThan(1.5);
+    }
+
+    // L'orsetto ha raggiunto con successo il lato sud aggirando l'ostacolo
+    expect(hub.player.wy).toBeGreaterThan(13.0);
+  });
+
+  it("super-bounces on trampoline with positive vertical velocity", () => {
+    const save = emptySave();
+    const hub = createHub(save);
+
+    // Posiziona l'orsetto sopra il trampolino elastico
+    const tramp = hub.toys.trampoline;
+    hub.player.wx = tramp.wx;
+    hub.player.wy = tramp.wy;
+    hub.player.wz = 0;
+    hub.player.vz = 0;
+
+    const ev = stepHub(hub, { dx: 0, dy: 0, interact: false }, 0.02);
+
+    expect(ev.bounce).toBe(true);
+    expect(hub.player.vz).toBeGreaterThan(5);
+    expect(hub.player.wz).toBeGreaterThan(0);
+  });
 });

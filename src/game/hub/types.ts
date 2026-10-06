@@ -53,6 +53,8 @@ export type TapTarget = {
   wx: number;
   wy: number;
   t: number;
+  path?: { wx: number; wy: number }[];
+  waypointIndex?: number;
 } | null;
 
 export type HubPlayer = {

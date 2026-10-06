@@ -126,10 +126,15 @@ export function getMapColliders(): { circles: ColliderCircle[]; rects: ColliderR
       { x: 11.5, y: 11.5, r: 1.6 },
       // Gazebo del mercatino
       { x: 9.5, y: 14.5, r: 1.4 },
-      // Alberelli nel giardino
+      // Alberelli e cespugli nel cortile
       { x: 19.5, y: 18.5, r: 1.2 },
       { x: 16.5, y: 19.5, r: 1.2 },
       { x: 20.5, y: 11.5, r: 1.2 },
+      { x: 3.5, y: 19.5, r: 1.2 },
+      // Amici NPC (impediscono compenetrazioni dello sprite ma lasciano raggio di dialogo)
+      { x: 8.5, y: 8.5, r: 0.8 }, // Mamma Orsa
+      { x: 16.5, y: 12.5, r: 0.8 }, // Papà Orso
+      { x: 14.5, y: 7.0, r: 0.65 }, // Micio il Gatto
     ],
     rects: [
       // Muro perimetrale esterno (confini del mondo calpestabile: 2 <= x, y <= 21)
@@ -143,8 +148,8 @@ export function getMapColliders(): { circles: ColliderCircle[]; rects: ColliderR
       { x1: 2.5, y1: 11.8, x2: 8.0, y2: 12.2 },
       { x1: 2.5, y1: 16.8, x2: 8.0, y2: 17.2 },
 
-      // Recinzione giardino est
-      { x1: 17.8, y1: 9.8, x2: 18.2, y2: 13.5 },
+      // Recinzione giardino est e terrazzo
+      { x1: 17.8, y1: 6.8, x2: 18.8, y2: 10.6 },
     ],
   };
 }

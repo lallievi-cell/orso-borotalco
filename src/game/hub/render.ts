@@ -132,8 +132,21 @@ export function renderHub(
 
   // L'Orsetto protagonista con ciclo di animazione identico ai livelli 2D
   const p = hub.player;
+
+  // Risoluzione intelligente profondità Z-index:
+  // Se l'orsetto è sul trampolino o sta saltando sopra di esso, DEVE essere disegnato DAVANTI al trampolino!
+  const tramp = hub.toys.trampoline;
+  const distTramp = Math.hypot(p.wx - tramp.wx, p.wy - tramp.wy);
+  const isInteractingWithTrampoline =
+    distTramp < tramp.radius * 1.35 ||
+    (distTramp < tramp.radius * 1.85 && (p.wz > 0.05 || Math.abs(p.vz) > 0.1));
+
+  const playerDepth = isInteractingWithTrampoline
+    ? getDepth(tramp.wx, tramp.wy, 0) + 0.6 + p.wz * 0.01
+    : getDepth(p.wx, p.wy, 0) + 0.05;
+
   items.push({
-    depth: getDepth(p.wx, p.wy, p.wz) + 0.05,
+    depth: playerDepth,
     draw: (c) => drawHubBear(c, p, art, equippedHat, camX, camY, hub.t),
   });
 
@@ -160,6 +173,74 @@ export function renderHub(
   // 6. Fumetto del dialogo attivo con battute per Celeste
   if (hub.dialogue) {
     drawDialogueBubble(ctx, hub.dialogue, hub.npcs, camX, camY);
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Disegna un'ombra realistica e morbida con caduta radiale graduale (penombra),
+ * zero bordi netti, sfumatura naturale a zero e colorazione armonizzata al terreno (prato, cotto, legno, terrazzo).
+ */
+export function drawSoftShadow(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  options: {
+    maxAlpha?: number;
+    tone?: "grass" | "warm" | "cool";
+    contactRatio?: number;
+    contactAlpha?: number;
+  } = {},
+) {
+  if (rx <= 0 || ry <= 0) return;
+  const maxAlpha = options.maxAlpha ?? 0.32;
+  const tone = options.tone ?? "warm";
+  const contactRatio = options.contactRatio ?? 0.45;
+  const contactAlpha = options.contactAlpha ?? 0.22;
+
+  // Tonalità calda e naturale specifica per il tipo di pavimentazione:
+  // - grass: verde sottobosco profondo, naturale e rigoglioso (mai più buchi neri o macchie scure sul prato!)
+  // - cool: ardesia e indaco per piastrelle azzurre del terrazzo
+  // - warm: terra d'ombra bruciata e noce per cotto toscano e parquet in legno
+  let rgb = "52, 28, 12";
+  if (tone === "grass") {
+    rgb = "18, 52, 24";
+  } else if (tone === "cool") {
+    rgb = "25, 42, 65";
+  }
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  // Trasforma il cerchio radiale in ellisse isometrica con perfetta proporzione d'aspetto
+  ctx.scale(1, ry / rx);
+
+  // 1. Penombra diffusa ampia con decadimento dolce a zero
+  const grad = ctx.createRadialGradient(0, 0, rx * 0.08, 0, 0, rx);
+  grad.addColorStop(0, `rgba(${rgb}, ${maxAlpha})`);
+  grad.addColorStop(0.35, `rgba(${rgb}, ${maxAlpha * 0.72})`);
+  grad.addColorStop(0.7, `rgba(${rgb}, ${maxAlpha * 0.3})`);
+  grad.addColorStop(1, `rgba(${rgb}, 0)`);
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(0, 0, rx, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 2. Micro-occlusione di contatto soffusa al centro (ancora l'oggetto al suolo senza macchie dure)
+  if (contactRatio > 0 && contactAlpha > 0) {
+    const cr = rx * contactRatio;
+    const cGrad = ctx.createRadialGradient(0, 0, cr * 0.05, 0, 0, cr);
+    cGrad.addColorStop(0, `rgba(${rgb}, ${contactAlpha})`);
+    cGrad.addColorStop(0.5, `rgba(${rgb}, ${contactAlpha * 0.5})`);
+    cGrad.addColorStop(1, `rgba(${rgb}, 0)`);
+
+    ctx.fillStyle = cGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, cr, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   ctx.restore();
@@ -194,17 +275,19 @@ function drawGroundTiles(
   // Ombra morbida diffusa sotto la base del diorama
   for (let x = minX; x <= maxX; x++) {
     const { sx, sy } = worldToScreen(x, maxY, 0, camX, camY);
-    ctx.fillStyle = "rgba(60, 30, 15, 0.18)";
-    ctx.beginPath();
-    ctx.ellipse(sx, sy + slabH + 8, 36, 12, 0, 0, Math.PI * 2);
-    ctx.fill();
+    drawSoftShadow(ctx, sx, sy + slabH + 8, 38, 14, {
+      tone: "warm",
+      maxAlpha: 0.16,
+      contactRatio: 0,
+    });
   }
   for (let y = minY; y <= maxY; y++) {
     const { sx, sy } = worldToScreen(maxX, y, 0, camX, camY);
-    ctx.fillStyle = "rgba(60, 30, 15, 0.18)";
-    ctx.beginPath();
-    ctx.ellipse(sx, sy + slabH + 8, 36, 12, 0, 0, Math.PI * 2);
-    ctx.fill();
+    drawSoftShadow(ctx, sx, sy + slabH + 8, 38, 14, {
+      tone: "warm",
+      maxAlpha: 0.16,
+      contactRatio: 0,
+    });
   }
 
   // Faccia 3D sinistra (rivolta verso SO) per tutte le colonne sul bordo sud (y = maxY)
@@ -391,21 +474,29 @@ function drawHubBear(
 ) {
   const { sx, sy } = worldToScreen(p.wx, p.wy, p.wz, camX, camY);
 
-  // Ombra a doppio strato: occlusione di contatto profonda sotto le zampine + ombra diffusa a terra
-  const shadowDist = Math.max(0.3, 1 - p.wz * 0.28);
+  // Ombra morbida e soffusa ad alta fedeltà con tonalità armonizzata al terreno
+  const shadowDist = Math.max(0.28, 1 - p.wz * 0.28);
   const groundPos = worldToScreen(p.wx, p.wy, 0, camX, camY);
+  const bearTone: "grass" | "warm" | "cool" =
+    p.wx >= 11.5 && p.wy >= 11.5
+      ? "grass"
+      : p.wx >= 12 && p.wy < 8.5
+      ? "cool"
+      : "warm";
 
-  // 1. Ombra diffusa del corpo a terra
-  ctx.fillStyle = `rgba(60, 30, 15, ${0.35 * shadowDist})`;
-  ctx.beginPath();
-  ctx.ellipse(groundPos.sx, groundPos.sy + 3, 24 * shadowDist, 10 * shadowDist, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // 2. Occlusione di contatto scura direttamente sotto le zampine (non vola mai!)
-  ctx.fillStyle = `rgba(20, 10, 5, ${0.75 * shadowDist})`;
-  ctx.beginPath();
-  ctx.ellipse(groundPos.sx, groundPos.sy + 3, 14 * shadowDist, 5 * shadowDist, 0, 0, Math.PI * 2);
-  ctx.fill();
+  drawSoftShadow(
+    ctx,
+    groundPos.sx,
+    groundPos.sy + 3,
+    26 * shadowDist,
+    11 * shadowDist,
+    {
+      tone: bearTone,
+      maxAlpha: 0.36 * shadowDist,
+      contactRatio: 0.48,
+      contactAlpha: 0.22 * shadowDist,
+    },
+  );
 
   const isWalking = p.moving;
   const isAirborne = p.wz > 0.05 || Math.abs(p.vz) > 0.1;
@@ -490,19 +581,14 @@ function drawPortal(
   const isGoal = portal.index === 7;
   const flip = portal.flip ?? 1;
 
-  // 0. Ombra a terra del portale e soglia in pietra scolpita (non vola mai!)
-  // Ombra diffusa a terra
-  ctx.fillStyle = "rgba(45, 20, 10, 0.4)";
-  ctx.beginPath();
-  ctx.ellipse(sx, sy + 3, 32, 13, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Occlusione di contatto profonda alla base dei due pilastri dell'arco
-  ctx.fillStyle = "rgba(20, 10, 5, 0.75)";
-  ctx.beginPath();
-  ctx.ellipse(sx - 18 * flip, sy + 2, 8, 4, 0, 0, Math.PI * 2);
-  ctx.ellipse(sx + 18 * flip, sy + 2, 8, 4, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // 0. Ombra soffusa a terra del portale e soglia in pietra scolpita
+  const portalTone: "cool" | "warm" = portal.index === 6 ? "cool" : "warm";
+  drawSoftShadow(ctx, sx, sy + 3, 34, 14, {
+    tone: portalTone,
+    maxAlpha: 0.32,
+    contactRatio: 0.52,
+    contactAlpha: 0.2,
+  });
 
   // Zerbino / soglia d'ingresso in pietra
   ctx.fillStyle = portal.locked ? "rgba(156, 163, 175, 0.3)" : "rgba(217, 119, 6, 0.35)";
@@ -554,11 +640,12 @@ function drawPortal(
     const tx = sx + 34;
     const ty = sy + 2;
 
-    // Ombra di contatto sotto il trono dorato del water
-    ctx.fillStyle = "rgba(40, 20, 10, 0.55)";
-    ctx.beginPath();
-    ctx.ellipse(tx + tw / 2, ty, 15, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
+    // Ombra morbida sotto il trono dorato del water
+    drawSoftShadow(ctx, tx + tw / 2, ty, 18, 8, {
+      tone: "warm",
+      maxAlpha: 0.35,
+      contactRatio: 0.45,
+    });
 
     const bob = Math.sin(t * 3.5) * 1.5;
     ctx.drawImage(art.toilet, tx, ty - th + bob, tw, th);
@@ -620,16 +707,16 @@ function drawNpc(
 ) {
   const { sx, sy } = worldToScreen(npc.wx, npc.wy, 0, camX, camY);
 
-  // 1. Ombra a doppio strato: diffusa a terra + occlusione di contatto profonda sotto le zampe
-  ctx.fillStyle = "rgba(60, 30, 15, 0.35)";
-  ctx.beginPath();
-  ctx.ellipse(sx, sy + 3, 26, 11, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // 1. Ombra soffusa a terra armonizzata alla pavimentazione (prato per Papà Orso, cotto per Mamma e Micio)
+  const npcTone: "grass" | "warm" =
+    npc.wx >= 11.5 && npc.wy >= 11.5 ? "grass" : "warm";
 
-  ctx.fillStyle = "rgba(20, 10, 5, 0.75)";
-  ctx.beginPath();
-  ctx.ellipse(sx, sy + 3, 16, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
+  drawSoftShadow(ctx, sx, sy + 3, 28, 12, {
+    tone: npcTone,
+    maxAlpha: 0.35,
+    contactRatio: 0.5,
+    contactAlpha: 0.22,
+  });
 
   ctx.save();
   // Piedini sempre saldati a terra (sy + 4), respiro naturale con leggera oscillazione volumetrica
@@ -699,17 +786,13 @@ function drawCentralFountain(
 ) {
   const { sx, sy } = worldToScreen(wx, wy, 0, camX, camY);
 
-  // Ombra monumentale a terra a doppio strato
-  ctx.fillStyle = "rgba(60, 30, 15, 0.38)";
-  ctx.beginPath();
-  ctx.ellipse(sx, sy + 6, 56, 26, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Occlusione di contatto profonda sotto il basamento in pietra
-  ctx.fillStyle = "rgba(20, 10, 5, 0.75)";
-  ctx.beginPath();
-  ctx.ellipse(sx, sy + 6, 44, 18, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // Ombra monumentale morbida a terra
+  drawSoftShadow(ctx, sx, sy + 6, 62, 28, {
+    tone: "warm",
+    maxAlpha: 0.38,
+    contactRatio: 0.58,
+    contactAlpha: 0.24,
+  });
 
   const img = art.hub.fountain;
   const fw = 118;
@@ -745,19 +828,13 @@ function drawShopGazebo(
 ) {
   const { sx, sy } = worldToScreen(wx, wy, 0, camX, camY);
 
-  // 1. Ombra diffusa sotto l'intero gazebo del bazar
-  ctx.fillStyle = "rgba(60, 30, 15, 0.35)";
-  ctx.beginPath();
-  ctx.ellipse(sx, sy + 6, 54, 24, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // 2. Occlusione di contatto profonda sotto i piedi d'appoggio in legno
-  ctx.fillStyle = "rgba(20, 10, 5, 0.75)";
-  ctx.beginPath();
-  ctx.ellipse(sx - 26, sy + 5, 10, 4, 0, 0, Math.PI * 2);
-  ctx.ellipse(sx + 26, sy + 5, 10, 4, 0, 0, Math.PI * 2);
-  ctx.ellipse(sx, sy + 6, 16, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // Ombra diffusa morbida sotto il gazebo del Bazar
+  drawSoftShadow(ctx, sx, sy + 6, 56, 26, {
+    tone: "warm",
+    maxAlpha: 0.36,
+    contactRatio: 0.52,
+    contactAlpha: 0.22,
+  });
 
   const img = art.hub.bazar;
   const bw = 120;
@@ -795,19 +872,13 @@ function drawCourtyardTrampoline(
 ) {
   const { sx, sy } = worldToScreen(wx, wy, 0, camX, camY);
 
-  // 1. Ombra diffusa a terra sotto il tappeto elastico
-  ctx.fillStyle = "rgba(50, 25, 10, 0.32)";
-  ctx.beginPath();
-  ctx.ellipse(sx, sy + 5, 38, 18, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // 2. Occlusione di contatto profonda sotto le gambe in acciaio
-  ctx.fillStyle = "rgba(15, 10, 5, 0.75)";
-  ctx.beginPath();
-  ctx.ellipse(sx - 22, sy + 5, 6, 3, 0, 0, Math.PI * 2);
-  ctx.ellipse(sx + 22, sy + 5, 6, 3, 0, 0, Math.PI * 2);
-  ctx.ellipse(sx, sy + 6, 8, 3, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // Ombra soffusa botanica ad alta fedeltà sotto il tappeto elastico (niente buchi neri sul prato!)
+  drawSoftShadow(ctx, sx, sy + 5, 42, 20, {
+    tone: "grass",
+    maxAlpha: 0.36,
+    contactRatio: 0.45,
+    contactAlpha: 0.2,
+  });
 
   const img = art.hub.trampoline;
   const trW = 78;
@@ -842,13 +913,25 @@ function drawBeachBall(
 ) {
   const { sx, sy } = worldToScreen(ball.wx, ball.wy, ball.wz, camX, camY);
 
-  // Ombra a terra del pallone
-  const shadowDist = Math.max(0.25, 1 - ball.wz * 0.25);
+  // Ombra a terra del pallone soffusa e scalata con l'altezza
+  const shadowDist = Math.max(0.22, 1 - ball.wz * 0.24);
   const groundPos = worldToScreen(ball.wx, ball.wy, 0, camX, camY);
-  ctx.fillStyle = `rgba(70, 35, 15, ${0.4 * shadowDist})`;
-  ctx.beginPath();
-  ctx.ellipse(groundPos.sx, groundPos.sy + 2, 16 * shadowDist, 8 * shadowDist, 0, 0, Math.PI * 2);
-  ctx.fill();
+  const ballTone: "grass" | "warm" =
+    ball.wx >= 11.5 && ball.wy >= 11.5 ? "grass" : "warm";
+
+  drawSoftShadow(
+    ctx,
+    groundPos.sx,
+    groundPos.sy + 2,
+    18 * shadowDist,
+    9 * shadowDist,
+    {
+      tone: ballTone,
+      maxAlpha: 0.35 * shadowDist,
+      contactRatio: 0.45,
+      contactAlpha: 0.2 * shadowDist,
+    },
+  );
 
   const r = ball.radius * 28;
   ctx.save();
@@ -905,19 +988,17 @@ function drawDecorTree(
   _t: number,
 ) {
   const { sx, sy } = worldToScreen(wx, wy, 0, camX, camY);
+  const isGrass = wx >= 11.5 && wy >= 11.5;
+  const treeTone: "grass" | "warm" = isGrass ? "grass" : "warm";
 
   if (kind === "apple") {
-    // Ombra diffusa albero
-    ctx.fillStyle = "rgba(60, 30, 15, 0.35)";
-    ctx.beginPath();
-    ctx.ellipse(sx, sy + 4, 30, 14, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Occlusione di contatto profonda sotto il tronco
-    ctx.fillStyle = "rgba(20, 10, 5, 0.75)";
-    ctx.beginPath();
-    ctx.ellipse(sx, sy + 4, 14, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
+    // Ombra diffusa e soffusa alla base del tronco (mai più buchi neri sul prato!)
+    drawSoftShadow(ctx, sx, sy + 4, 34, 16, {
+      tone: treeTone,
+      maxAlpha: 0.35,
+      contactRatio: 0.45,
+      contactAlpha: 0.22,
+    });
 
     const img = art.hub.tree;
     const tw = 92;
@@ -927,15 +1008,12 @@ function drawDecorTree(
     }
   } else {
     // Cespuglio di rose fiorite
-    ctx.fillStyle = "rgba(60, 30, 15, 0.3)";
-    ctx.beginPath();
-    ctx.ellipse(sx, sy + 3, 24, 11, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = "rgba(20, 10, 5, 0.7)";
-    ctx.beginPath();
-    ctx.ellipse(sx, sy + 3, 16, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
+    drawSoftShadow(ctx, sx, sy + 3, 26, 12, {
+      tone: treeTone,
+      maxAlpha: 0.32,
+      contactRatio: 0.4,
+      contactAlpha: 0.2,
+    });
 
     const img = art.hub.bush;
     const bw = 58;
@@ -957,17 +1035,13 @@ function drawGardenFence(
 ) {
   const { sx, sy } = worldToScreen(wx, wy, 0, camX, camY);
 
-  // Ombra diffusa staccionata
-  ctx.fillStyle = "rgba(60, 30, 15, 0.28)";
-  ctx.beginPath();
-  ctx.ellipse(sx, sy + 3, 26, 11, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Occlusione di contatto sotto i paletti
-  ctx.fillStyle = "rgba(20, 10, 5, 0.65)";
-  ctx.beginPath();
-  ctx.ellipse(sx, sy + 3, 20, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // Ombra soffusa staccionata sul terrazzo
+  drawSoftShadow(ctx, sx, sy + 3, 28, 12, {
+    tone: "cool",
+    maxAlpha: 0.28,
+    contactRatio: 0.4,
+    contactAlpha: 0.16,
+  });
 
   const img = art.hub.fence;
   const fw = 60;
@@ -985,17 +1059,46 @@ function drawTapIndicator(
   camY: number,
   t: number,
 ) {
+  // Tracciato intelligente a zampine dorate tratteggiate verso la meta
+  if (target.path && target.path.length > 0) {
+    const startIdx = target.waypointIndex ?? 0;
+    ctx.save();
+    ctx.strokeStyle = "rgba(251, 191, 36, 0.45)";
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    for (let i = startIdx; i < target.path.length; i++) {
+      const pt = target.path[i]!;
+      const pos = worldToScreen(pt.wx, pt.wy, 0, camX, camY);
+      if (i === startIdx) ctx.moveTo(pos.sx, pos.sy);
+      else ctx.lineTo(pos.sx, pos.sy);
+    }
+    ctx.stroke();
+
+    // Piccoli puntini dorati lungo i waypoint
+    ctx.setLineDash([]);
+    for (let i = startIdx; i < target.path.length; i++) {
+      const pt = target.path[i]!;
+      const pos = worldToScreen(pt.wx, pt.wy, 0, camX, camY);
+      ctx.fillStyle = "rgba(251, 191, 36, 0.75)";
+      ctx.beginPath();
+      ctx.arc(pos.sx, pos.sy, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   const { sx, sy } = worldToScreen(target.wx, target.wy, 0, camX, camY);
-  const pulse = Math.sin(t * 8) * 4;
+  const pulse = Math.sin(t * 8) * 3;
 
   ctx.strokeStyle = "rgba(251, 191, 36, 0.9)";
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 2.8;
   ctx.beginPath();
-  ctx.ellipse(sx, sy, 22 + pulse, 11 + pulse * 0.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(sx, sy, 20 + pulse, 10 + pulse * 0.5, 0, 0, Math.PI * 2);
   ctx.stroke();
 
   // Impronta zampina d'orso centrale
-  ctx.font = "18px sans-serif";
+  ctx.font = "16px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText("🐾", sx, sy);
