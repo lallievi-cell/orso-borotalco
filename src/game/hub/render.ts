@@ -186,10 +186,10 @@ export function renderHub(
     });
   }
 
-  // Staccionate in legno bianco sul terrazzo belvedere
+  // Staccionate in legno bianco sul terrazzo belvedere (incorniciano la passerella a x: 18.0)
   const fences = [
-    { wx: 18.5, wy: 7.2 },
-    { wx: 18.5, wy: 9.8 },
+    { wx: 16.8, wy: 7.2 },
+    { wx: 16.8, wy: 9.8 },
     { wx: 22.5, wy: 6.5 },
     { wx: 22.5, wy: 8.5 },
   ];

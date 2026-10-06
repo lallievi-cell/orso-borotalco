@@ -115,7 +115,7 @@ export function findPath(
   // Configurazione griglia A*
   const res = 0.5; // risoluzione nodi griglia mondo
   const minG = 2.5;
-  const maxG = 21.5;
+  const maxG = 23.5;
 
   const sNodeX = Math.round(startX / res) * res;
   const sNodeY = Math.round(startY / res) * res;

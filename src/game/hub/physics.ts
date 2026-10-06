@@ -4,7 +4,7 @@ import { worldToScreen } from "@/game/hub/coords";
 import { findPath, checkCollision } from "@/game/hub/nav";
 
 const PLAYER_SPEED = 5.6; // Unità mondo al secondo
-const PLAYER_RADIUS = 0.55;
+const PLAYER_RADIUS = 0.38; // Raggio reale dell'ingombro zampine a terra dell'orsetto
 
 export type HubInput = {
   dx: number;
@@ -183,7 +183,7 @@ export function stepHub(hub: HubState, input: HubInput, dt: number): HubStepEven
 
   // 6a. Calcio o colpo di testa dell'orsetto
   const distBall = Math.hypot(p.wx - ball.wx, p.wy - ball.wy);
-  if (distBall < PLAYER_RADIUS + ball.radius && Math.abs(p.wz - ball.wz) < 1.1) {
+  if (distBall < PLAYER_RADIUS + ball.radius + 0.28 && Math.abs(p.wz - ball.wz) < 1.1) {
     const kickX = (ball.wx - p.wx) / (distBall || 1);
     const kickY = (ball.wy - p.wy) / (distBall || 1);
 
@@ -305,12 +305,12 @@ export function stepHub(hub: HubState, input: HubInput, dt: number): HubStepEven
       ball.squish = Math.min(0.4, Math.abs(ball.vy) * 0.08);
     }
 
-    // Collisione con la vasca della fontana centrale (11.5, 11.5 r=1.6)
+    // Collisione con la vasca della fontana centrale (11.5, 11.5 r=1.35)
     const distFountain = Math.hypot(ball.wx - 11.5, ball.wy - 11.5);
-    if (distFountain < 1.6 + ball.radius) {
+    if (distFountain < 1.35 + ball.radius) {
       const normX = (ball.wx - 11.5) / (distFountain || 1);
       const normY = (ball.wy - 11.5) / (distFountain || 1);
-      ball.wx = 11.5 + normX * (1.6 + ball.radius);
+      ball.wx = 11.5 + normX * (1.35 + ball.radius);
       const dot = ball.vx * normX + ball.vy * normY;
       if (dot < 0) {
         ball.vx -= 1.8 * dot * normX;

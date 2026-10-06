@@ -119,31 +119,50 @@ export type ColliderCircle = { x: number; y: number; r: number };
 export type ColliderRect = { x1: number; y1: number; x2: number; y2: number };
 
 /** Ritorna gli ostacoli della mappa (muri della casa, fontana, recinti). */
+/** Ritorna gli ostacoli della mappa con sagome fisiche calibrate sull'esatto ingombro a terra dei disegni. */
 export function getMapColliders(): { circles: ColliderCircle[]; rects: ColliderRect[] } {
   return {
     circles: [
-      // Fontana centrale
-      { x: 11.5, y: 11.5, r: 1.6 },
-      // Gazebo del mercatino (struttura banco in legno)
-      { x: 9.5, y: 14.5, r: 1.05 },
-      // Alberelli e cespugli nel cortile
-      { x: 20.5, y: 18.5, r: 1.1 },
-      { x: 16.5, y: 13.5, r: 1.1 },
-      { x: 4.5, y: 20.5, r: 1.1 },
-      { x: 19.5, y: 18.5, r: 1.1 },
-      // Canestro da basket
-      { x: 13.8, y: 19.5, r: 0.6 },
-      // Tavolino bistrot da tè
-      { x: 6.5, y: 15.5, r: 0.75 },
-      // Panchine in legno del viale
-      { x: 6.5, y: 11.5, r: 0.65 },
-      { x: 15.5, y: 11.5, r: 0.65 },
-      // Cannocchiale montante
-      { x: 20.5, y: 5.5, r: 0.5 },
-      // Amici NPC (impediscono compenetrazioni dello sprite ma lasciano raggio di dialogo)
-      { x: 8.5, y: 8.5, r: 0.8 }, // Mamma Orsa
-      { x: 17.5, y: 11.5, r: 0.8 }, // Papà Orso
-      { x: 14.5, y: 7.0, r: 0.65 }, // Micio il Gatto
+      // Fontana centrale (bordo vasca in marmo a terra)
+      { x: 11.5, y: 11.5, r: 1.35 },
+
+      // Gazebo del mercatino (ingombro piedini e bancone in legno di Babbo Coniglio)
+      { x: 9.3, y: 14.3, r: 0.65 },
+
+      // Alberelli da frutto (tronco solido alla base: la chioma fogliare è in alto!)
+      { x: 20.5, y: 18.5, r: 0.38 },
+      { x: 16.5, y: 13.5, r: 0.38 },
+      { x: 4.5, y: 20.5, r: 0.38 },
+
+      // Cespugli di rose fiorite (sagoma cespuglio alla base)
+      { x: 16.5, y: 19.5, r: 0.38 },
+      { x: 20.5, y: 11.5, r: 0.38 },
+      { x: 22.5, y: 16.5, r: 0.38 },
+      { x: 13.5, y: 21.5, r: 0.38 },
+
+      // Canestro da basket (base e palo di sostegno posteriore, canestro libero davanti)
+      { x: 13.8, y: 19.7, r: 0.32 },
+
+      // Tavolino bistrot da tè (piedistallo centrale)
+      { x: 6.5, y: 15.5, r: 0.45 },
+
+      // Panchine in legno del viale (ingombro seduta)
+      { x: 6.5, y: 11.5, r: 0.42 },
+      { x: 15.5, y: 11.5, r: 0.42 },
+
+      // 4 Lampioni vittoriani (fusto sottile in ghisa)
+      { x: 9.5, y: 9.5, r: 0.22 },
+      { x: 13.5, y: 9.5, r: 0.22 },
+      { x: 9.5, y: 17.5, r: 0.22 },
+      { x: 17.5, y: 17.5, r: 0.22 },
+
+      // Cannocchiale panoramico (treppiede alla base)
+      { x: 20.5, y: 5.5, r: 0.32 },
+
+      // Amici NPC (ingombro zampette naturale, senza bolle teoriche giganti)
+      { x: 8.5, y: 8.5, r: 0.42 }, // Mamma Orsa
+      { x: 17.5, y: 11.5, r: 0.45 }, // Papà Orso
+      { x: 14.5, y: 7.0, r: 0.38 }, // Micio il Gatto (cuscino)
     ],
     rects: [
       // Muro perimetrale esterno (confini del mondo calpestabile: 3.6 <= x, y <= 23.6)
@@ -152,8 +171,11 @@ export function getMapColliders(): { circles: ColliderCircle[]; rects: ColliderR
       { x1: -5, y1: -5, x2: 32, y2: 3.6 }, // Parete Nord / Nord-Est
       { x1: -5, y1: 23.6, x2: 32, y2: 32 }, // Bordo Sud
 
-      // Recinzione giardino est e terrazzo
-      { x1: 17.8, y1: 6.8, x2: 18.8, y2: 10.6 },
+      // Sezioni di staccionata sul terrazzo (lasciano la passerella musicale x: 18.0 completamente libera)
+      { x1: 16.5, y1: 6.8, x2: 17.1, y2: 7.6 },
+      { x1: 16.5, y1: 9.4, x2: 17.1, y2: 10.2 },
+      { x1: 22.2, y1: 6.1, x2: 22.8, y2: 6.9 },
+      { x1: 22.2, y1: 8.1, x2: 22.8, y2: 8.9 },
     ],
   };
 }
