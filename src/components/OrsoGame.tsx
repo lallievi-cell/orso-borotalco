@@ -785,14 +785,14 @@ export function OrsoGame() {
       }
     }
 
-    // Se c'è un tocco diretto sul Cannocchiale Panoramico (20.5, 5.5)
-    const telScreen = worldToScreen(20.5, 5.5, 0, camX, camY);
+    // Se c'è un tocco diretto sul Cannocchiale Panoramico (21.5, 7.5)
+    const telScreen = worldToScreen(21.5, 7.5, 0, camX, camY);
     if (Math.hypot(sx - telScreen.sx, sy - (telScreen.sy - 35)) < 55) {
-      if (Math.hypot(hub.player.wx - 20.5, hub.player.wy - 5.5) <= 2.2) {
+      if (Math.hypot(hub.player.wx - 21.5, hub.player.wy - 7.5) <= 2.2) {
         interactHub(hub, bag.current.audio);
         return;
       } else {
-        bag.current.hubTap = { wx: 19.8, wy: 5.8 };
+        bag.current.hubTap = { wx: 20.8, wy: 7.5 };
         return;
       }
     }

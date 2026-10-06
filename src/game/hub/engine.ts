@@ -101,8 +101,8 @@ export function createHub(save: SaveData, returnPortalIndex: number | null = nul
         { id: 5, wx: 18.0, wy: 10.0, note: "SOL", freq: 783.99, color: "#38bdf8", triggerT: 0 },
       ],
       telescope: {
-        wx: 20.5,
-        wy: 5.5,
+        wx: 21.5,
+        wy: 7.5,
         radius: 1.3,
         lookT: 0,
       },

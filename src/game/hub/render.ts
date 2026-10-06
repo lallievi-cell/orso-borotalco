@@ -29,7 +29,7 @@ export function renderHub(
   drawHubBackground(ctx, hub.t);
 
   // 2. Disegno della pavimentazione base con spessore 3D del diorama (pedistallo in legno, cotto, prato, parquet)
-  drawGroundTiles(ctx, art, camX, camY, hub.t);
+  drawGroundTiles(ctx, art, camX, camY, hub.t, hub.toys.musicTiles);
 
   // 2b. Pareti a L della stanza (Parete Nord-Ovest e Parete Nord-Est con boiserie, finestre ad arco e quadri)
   drawHubWalls(ctx, art, camX, camY, hub.t);
@@ -186,12 +186,10 @@ export function renderHub(
     });
   }
 
-  // Staccionate in legno bianco sul terrazzo belvedere (incorniciano la passerella a x: 18.0)
+  // Staccionate in legno bianco sul terrazzo belvedere (ringhiera perimetrale esterna a est, lascia il tappeto musicale a x: 18.0 completamente libero al 100%)
   const fences = [
-    { wx: 16.8, wy: 7.2 },
-    { wx: 16.8, wy: 9.8 },
-    { wx: 22.5, wy: 6.5 },
-    { wx: 22.5, wy: 8.5 },
+    { wx: 22.8, wy: 6.2 },
+    { wx: 22.8, wy: 9.2 },
   ];
   for (const f of fences) {
     items.push({
@@ -1376,12 +1374,12 @@ function drawHubWalls(
   const pTeddy = worldToScreen(13.0, 3.5, 0, camX, camY);
   drawWallPainting(ctx, pTeddy.sx, pTeddy.sy - 54, "🧸");
 
-  // - Finestra panoramica 4 tra Cameretta e terrazzo
-  const pWin3 = worldToScreen(17.5, 3.5, 0, camX, camY);
+  // - Finestra panoramica 4 verso il terrazzo est
+  const pWin3 = worldToScreen(20.8, 3.5, 0, camX, camY);
   drawArchedWallWindow(ctx, pWin3.sx, pWin3.sy - 52, "blue");
 
   // - Quadretto trofeo d'oro verso il terrazzo est
-  const pTrophy = worldToScreen(21.0, 3.5, 0, camX, camY);
+  const pTrophy = worldToScreen(22.8, 3.5, 0, camX, camY);
   drawWallPainting(ctx, pTrophy.sx, pTrophy.sy - 54, "🏆");
 
   // - Applique luminose dorate lungo la parete NE
@@ -1389,7 +1387,7 @@ function drawHubWalls(
   drawWallSconce(ctx, pSc3.sx - 4, pSc3.sy - 66);
   const pSc4 = worldToScreen(14.5, 3.5, 0, camX, camY);
   drawWallSconce(ctx, pSc4.sx - 4, pSc4.sy - 66);
-  const pScExtE = worldToScreen(19.0, 3.5, 0, camX, camY);
+  const pScExtE = worldToScreen(17.5, 3.5, 0, camX, camY);
   drawWallSconce(ctx, pScExtE.sx - 4, pScExtE.sy - 66);
 }
 
@@ -1399,7 +1397,8 @@ function drawGroundTiles(
   art: Art,
   camX: number,
   camY: number,
-  _t: number,
+  t: number,
+  musicTiles?: HubState["toys"]["musicTiles"],
 ) {
   const minX = 4;
   const maxX = 23;
@@ -1664,22 +1663,29 @@ function drawGroundTiles(
         const noteIdx = y - 6;
         const color = musicColors[noteIdx] ?? "#fde047";
         const noteName = noteNames[noteIdx] ?? "DO";
+        const mTile = musicTiles?.[noteIdx];
+        const isHit = mTile && t - mTile.triggerT < 0.45;
 
-        ctx.fillStyle = color;
+        // Se calpestata dall'orsetto: bagliore magico e leggero rimbalzo
+        const pulse = isHit ? Math.sin(((t - mTile!.triggerT) * Math.PI) / 0.45) : 0;
+        const dw = 28 + pulse * 3.5;
+        const dh = 14 + pulse * 1.8;
+
+        ctx.fillStyle = isHit ? "#ffffff" : color;
         ctx.beginPath();
-        ctx.moveTo(sx, sy - 14);
-        ctx.lineTo(sx + 28, sy);
-        ctx.lineTo(sx, sy + 14);
-        ctx.lineTo(sx - 28, sy);
+        ctx.moveTo(sx, sy - dh);
+        ctx.lineTo(sx + dw, sy);
+        ctx.lineTo(sx, sy + dh);
+        ctx.lineTo(sx - dw, sy);
         ctx.closePath();
         ctx.fill();
 
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 2.0;
+        ctx.strokeStyle = isHit ? color : "#ffffff";
+        ctx.lineWidth = isHit ? 2.8 : 2.0;
         ctx.stroke();
 
-        ctx.font = '900 11px "Fredoka", sans-serif';
-        ctx.fillStyle = "#ffffff";
+        ctx.font = '900 12px "Fredoka", sans-serif';
+        ctx.fillStyle = isHit ? color : "#ffffff";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(noteName, sx, sy);

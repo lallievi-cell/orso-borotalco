@@ -553,7 +553,7 @@ export function stepHub(hub: HubState, input: HubInput, dt: number): HubStepEven
   hub.nearShop = isNearShop;
 
   hub.nearFountain = Math.hypot(p.wx - 11.5, p.wy - 11.5) < 2.4;
-  hub.nearTelescope = Math.hypot(p.wx - 20.5, p.wy - 5.5) < 1.8;
+  hub.nearTelescope = Math.hypot(p.wx - 21.5, p.wy - 7.5) < 1.8;
 
   let foundNpc: NpcInfo | null = null;
   for (const npc of hub.npcs) {

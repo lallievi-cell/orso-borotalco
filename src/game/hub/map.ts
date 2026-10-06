@@ -26,7 +26,7 @@ export function createPortals(save: SaveData): PortalInfo[] {
     { wx: 8.5, wy: 4.2, flip: -1 }, // 3: Corridoio (Parete NE, inserito nel muro)
     { wx: 4.2, wy: 18.5, flip: 1 }, // 4: Lavanderia (Parete NO, inserito nel muro)
     { wx: 14.5, wy: 4.2, flip: -1 }, // 5: Cameretta (Parete NE, inserito nel muro)
-    { wx: 18.5, wy: 7.5, flip: -1 }, // 6: Terrazzo (Soglia terrazzo a est)
+    { wx: 17.5, wy: 4.2, flip: -1 }, // 6: Terrazzo (Parete NE, inserito nel muro a ritmo con le altre stanze)
     { wx: 11.5, wy: 4.2, flip: -1 }, // 7: Bagno d'Oro (Apice Parete NE, alla fine del tappeto rosso)
   ];
 
@@ -156,8 +156,8 @@ export function getMapColliders(): { circles: ColliderCircle[]; rects: ColliderR
       { x: 9.5, y: 17.5, r: 0.22 },
       { x: 17.5, y: 17.5, r: 0.22 },
 
-      // Cannocchiale panoramico (treppiede alla base)
-      { x: 20.5, y: 5.5, r: 0.32 },
+      // Cannocchiale panoramico (terrazzo belvedere verso l'orizzonte)
+      { x: 21.5, y: 7.5, r: 0.32 },
 
       // Amici NPC (ingombro zampette naturale, senza bolle teoriche giganti)
       { x: 8.5, y: 8.5, r: 0.42 }, // Mamma Orsa
@@ -171,11 +171,9 @@ export function getMapColliders(): { circles: ColliderCircle[]; rects: ColliderR
       { x1: -5, y1: -5, x2: 32, y2: 3.6 }, // Parete Nord / Nord-Est
       { x1: -5, y1: 23.6, x2: 32, y2: 32 }, // Bordo Sud
 
-      // Sezioni di staccionata sul terrazzo (lasciano la passerella musicale x: 18.0 completamente libera)
-      { x1: 16.5, y1: 6.8, x2: 17.1, y2: 7.6 },
-      { x1: 16.5, y1: 9.4, x2: 17.1, y2: 10.2 },
-      { x1: 22.2, y1: 6.1, x2: 22.8, y2: 6.9 },
-      { x1: 22.2, y1: 8.1, x2: 22.8, y2: 8.9 },
+      // Ringhiera in legno bianco sul bordo est del terrazzo belvedere (passerella musicale x: 18.0 completamente libera)
+      { x1: 22.4, y1: 5.6, x2: 23.2, y2: 6.8 },
+      { x1: 22.4, y1: 8.6, x2: 23.2, y2: 9.8 },
     ],
   };
 }
