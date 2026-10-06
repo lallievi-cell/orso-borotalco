@@ -17,20 +17,20 @@ export const ROOM_NAMES = [
 
 export const ROOM_ICONS = ["🛋️", "🍳", "🌸", "🚪", "🧺", "🧸", "🫧", "🚽"];
 
-/** Crea i portali delle 8 stanze posizionati in modo armonioso nel diorama. */
+/** Crea i portali delle 8 stanze posizionati e orientati in linea con i muri del diorama. */
 export function createPortals(save: SaveData): PortalInfo[] {
-  const coords: { wx: number; wy: number }[] = [
-    { wx: 5.5, wy: 8.5 }, // 0: Salotto
-    { wx: 5.5, wy: 13.5 }, // 1: Cucina
-    { wx: 18.5, wy: 14.5 }, // 2: Giardino
-    { wx: 8.5, wy: 5.5 }, // 3: Corridoio
-    { wx: 6.5, wy: 18.5 }, // 4: Lavanderia
-    { wx: 13.5, wy: 5.5 }, // 5: Cameretta
-    { wx: 18.5, wy: 8.5 }, // 6: Terrazzo
-    { wx: 11.5, wy: 2.5 }, // 7: Bagno d'Oro (Traguardo)
+  const portalConfigs: { wx: number; wy: number; flip: number }[] = [
+    { wx: 5.0, wy: 8.5, flip: 1 }, // 0: Salotto (Muro NO, rivolto verso SE nel cortile)
+    { wx: 5.0, wy: 13.5, flip: 1 }, // 1: Cucina (Muro NO, rivolto verso SE nel cortile)
+    { wx: 18.5, wy: 14.5, flip: -1 }, // 2: Giardino (Soglia giardino, rivolto verso SO)
+    { wx: 8.5, wy: 5.6, flip: -1 }, // 3: Corridoio (Muro NE, rivolto verso SO nel cortile)
+    { wx: 5.0, wy: 18.5, flip: 1 }, // 4: Lavanderia (Muro NO, rivolto verso SE nel cortile)
+    { wx: 14.5, wy: 5.6, flip: -1 }, // 5: Cameretta (Muro NE, rivolto verso SO nel cortile)
+    { wx: 18.5, wy: 7.5, flip: -1 }, // 6: Terrazzo (Muro est con staccionata, rivolto verso SO)
+    { wx: 11.5, wy: 4.5, flip: -1 }, // 7: Bagno d'Oro (Apice settentrionale della villa, sul marmo rosa)
   ];
 
-  return coords.map((c, i) => ({
+  return portalConfigs.map((c, i) => ({
     index: i,
     name: ROOM_NAMES[i] ?? `STANZA ${i + 1}`,
     icon: ROOM_ICONS[i] ?? "🚪",
@@ -40,6 +40,7 @@ export function createPortals(save: SaveData): PortalInfo[] {
     locked: i > save.unlocked,
     stars: save.best[i] ?? 0,
     duck: !!save.ducks[i],
+    flip: c.flip,
   }));
 }
 

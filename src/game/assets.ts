@@ -23,6 +23,25 @@ export type Art = {
   sock: HTMLImageElement | null;
   goldduck: HTMLImageElement | null;
   toilet: HTMLImageElement | null;
+  hub: {
+    mamma: HTMLImageElement | null;
+    papa: HTMLImageElement | null;
+    micio: HTMLImageElement | null;
+    bazar: HTMLImageElement | null;
+    fountain: HTMLImageElement | null;
+    tree: HTMLImageElement | null;
+    bush: HTMLImageElement | null;
+    trampoline: HTMLImageElement | null;
+    arch: HTMLImageElement | null;
+    fence: HTMLImageElement | null;
+    tiles: {
+      cotto: HTMLImageElement | null;
+      grass: HTMLImageElement | null;
+      wood: HTMLImageElement | null;
+      terrace: HTMLImageElement | null;
+      marble: HTMLImageElement | null;
+    };
+  };
   bg: Record<Theme, HTMLImageElement | null>;
 };
 
@@ -51,6 +70,8 @@ export async function loadArt(): Promise<Art> {
     star, powder, ring, brush, heart, door, lamp, pillow, bench, mat,
     tomato, slipper, sock, goldduck, toilet,
     salotto, corridoio, bagno, cucina, giardino, lavanderia, cameretta, terrazzo,
+    hubMamma, hubPapa, hubMicio, hubBazar, hubFountain, hubTree, hubBush, hubTrampoline, hubArch, hubFence,
+    tileCotto, tileGrass, tileWood, tileTerrace, tileMarble,
   ] = await Promise.all([
     seq("/sprites/bear", "idle"),
     seq("/sprites/bear", "run"),
@@ -82,12 +103,46 @@ export async function loadArt(): Promise<Art> {
     load("/bg/lavanderia.jpg"),
     load("/bg/cameretta.jpg"),
     load("/bg/terrazzo.jpg"),
+    load("/sprites/hub/mamma.png"),
+    load("/sprites/hub/papa.png"),
+    load("/sprites/hub/micio.png"),
+    load("/sprites/hub/bazar.png"),
+    load("/sprites/hub/fountain.png"),
+    load("/sprites/hub/tree.png"),
+    load("/sprites/hub/bush.png"),
+    load("/sprites/hub/trampoline.png"),
+    load("/sprites/hub/arch.png"),
+    load("/sprites/hub/fence.png"),
+    load("/sprites/hub/tiles/cotto.png"),
+    load("/sprites/hub/tiles/grass.png"),
+    load("/sprites/hub/tiles/wood.png"),
+    load("/sprites/hub/tiles/terrace.png"),
+    load("/sprites/hub/tiles/marble.png"),
   ]);
   return {
     idle, run, jump,
     sponge, roll, bubble, duck,
     star, powder, ring, brush, heart, door, lamp, pillow, bench, mat,
     tomato, slipper, sock, goldduck, toilet,
+    hub: {
+      mamma: hubMamma,
+      papa: hubPapa,
+      micio: hubMicio,
+      bazar: hubBazar,
+      fountain: hubFountain,
+      tree: hubTree,
+      bush: hubBush,
+      trampoline: hubTrampoline,
+      arch: hubArch,
+      fence: hubFence,
+      tiles: {
+        cotto: tileCotto,
+        grass: tileGrass,
+        wood: tileWood,
+        terrace: tileTerrace,
+        marble: tileMarble,
+      },
+    },
     bg: { salotto, corridoio, bagno, cucina, giardino, lavanderia, cameretta, terrazzo },
   };
 }

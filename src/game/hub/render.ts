@@ -9,7 +9,7 @@ type Renderable = {
   draw: (ctx: CanvasRenderingContext2D) => void;
 };
 
-/** Renderizza l'intero diorama isometrico dell'Hub su canvas con grafica e animazioni ad altissima fedeltà. */
+/** Renderizza l'intero diorama isometrico dell'Hub su canvas con sprite 3D illustrati ad altissima fedeltà. */
 export function renderHub(
   ctx: CanvasRenderingContext2D,
   hub: HubState,
@@ -25,16 +25,16 @@ export function renderHub(
   const camX = hub.cam.x - centerSx;
   const camY = hub.cam.y - centerSy;
 
-  // 1. Sfondo generale del diorama (atmosfera calda e luminosa da cameretta/giardino)
+  // 1. Sfondo generale del diorama (atmosfera calda e accogliente da cameretta/nursery)
   drawHubBackground(ctx);
 
-  // 2. Disegno della pavimentazione base (parquet con assi di legno, prato con margherite, marmo, cotto)
-  drawGroundTiles(ctx, camX, camY, hub.t);
+  // 2. Disegno della pavimentazione base con spessore 3D del diorama (pedistallo in legno, cotto, prato, parquet)
+  drawGroundTiles(ctx, art, camX, camY, hub.t);
 
   // 3. Raccolta di tutti gli oggetti tridimensionali per l'ordinamento Y-sorting
   const items: Renderable[] = [];
 
-  // Portali delle 8 stanze con porte in legno 3D, tappetini e targhe con stelline
+  // Portali delle 8 stanze con archi in pietra e rose rampicanti (art.hub.arch)
   for (const portal of hub.portals) {
     items.push({
       depth: getDepth(portal.wx, portal.wy, 0),
@@ -42,28 +42,29 @@ export function renderHub(
     });
   }
 
-  // NPC amici (Mamma Orsa, Papà Orso, Micio, Babbo Coniglio)
+  // NPC amici (Mamma Orsa, Papà Orso, Micio il Gatto)
   for (const npc of hub.npcs) {
-    if (npc.id === "paperella") continue; // La paperella d'oro è esposta con orgoglio sulla fontana centrale
+    // La paperella è sulla fontana e il coniglio è nel gazebo del bazar
+    if (npc.id === "paperella" || npc.id === "coniglio") continue;
     items.push({
       depth: getDepth(npc.wx, npc.wy, 0),
       draw: (c) => drawNpc(c, npc, art, camX, camY, hub.t),
     });
   }
 
-  // Gazebo del Bazar delle stelline
+  // Gazebo del Bazar delle stelline con Babbo Coniglio illustrato (art.hub.bazar)
   items.push({
     depth: getDepth(9.5, 14.5, 0),
     draw: (c) => drawShopGazebo(c, 9.5, 14.5, art, camX, camY, hub.t),
   });
 
-  // Fontana centrale con l'iconica Paperella d'Oro 3D
+  // Fontana centrale con l'iconica Paperella d'Oro 3D (art.hub.fountain)
   items.push({
     depth: getDepth(11.5, 11.5, 0),
     draw: (c) => drawCentralFountain(c, 11.5, 11.5, art, camX, camY, hub.t),
   });
 
-  // Trampolino elastico nel cortile
+  // Trampolino elastico giocattolo nel prato (art.hub.trampoline)
   items.push({
     depth: getDepth(hub.toys.trampoline.wx, hub.toys.trampoline.wy, 0),
     draw: (c) =>
@@ -71,6 +72,7 @@ export function renderHub(
         c,
         hub.toys.trampoline.wx,
         hub.toys.trampoline.wy,
+        art,
         camX,
         camY,
         hub.t,
@@ -84,17 +86,29 @@ export function renderHub(
     draw: (c) => drawBeachBall(c, ball, camX, camY),
   });
 
-  // Alberi di mele e cespugli di rose fiorite
+  // Alberi di mele e cespugli di rose fiorite illustrati (art.hub.tree, art.hub.bush)
   const decorTrees = [
     { wx: 19.5, wy: 18.5, kind: "apple" },
     { wx: 16.5, wy: 19.5, kind: "bush" },
-    { wx: 20.5, wy: 11.5, kind: "rose" },
-    { wx: 3.5, wy: 19.5, kind: "plant" },
+    { wx: 20.5, wy: 11.5, kind: "bush" },
+    { wx: 3.5, wy: 19.5, kind: "apple" },
   ];
   for (const tree of decorTrees) {
     items.push({
       depth: getDepth(tree.wx, tree.wy, 0),
-      draw: (c) => drawDecorTree(c, tree.wx, tree.wy, tree.kind, camX, camY, hub.t),
+      draw: (c) => drawDecorTree(c, tree.wx, tree.wy, tree.kind, art, camX, camY, hub.t),
+    });
+  }
+
+  // Sezioni di staccionata in legno bianco con fiori rampicanti sul terrazzo (art.hub.fence)
+  const fences = [
+    { wx: 18.5, wy: 7.2 },
+    { wx: 18.5, wy: 9.8 },
+  ];
+  for (const f of fences) {
+    items.push({
+      depth: getDepth(f.wx, f.wy, 0),
+      draw: (c) => drawGardenFence(c, f.wx, f.wy, art, camX, camY),
     });
   }
 
@@ -151,7 +165,7 @@ export function renderHub(
   ctx.restore();
 }
 
-/** Sfondo sfumato caldo da camera/cortile. */
+/** Sfondo caldo e sfumato da camera/nursery con morbida vignettatura. */
 function drawHubBackground(ctx: CanvasRenderingContext2D) {
   const bg = ctx.createRadialGradient(VIEW_W / 2, VIEW_H / 2, 80, VIEW_W / 2, VIEW_H / 2, VIEW_W * 0.85);
   bg.addColorStop(0, "#fffbf5");
@@ -161,10 +175,123 @@ function drawHubBackground(ctx: CanvasRenderingContext2D) {
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 }
 
-/** Pavimentazione ricca: doghe in legno, prato verde fiorito, marmo Carrara, cotto. */
-function drawGroundTiles(ctx: CanvasRenderingContext2D, camX: number, camY: number, t: number) {
-  for (let x = 3; x <= 20; x++) {
-    for (let y = 3; y <= 20; y++) {
+/** Pavimentazione ricca: piedistallo 3D del diorama, cotto caldo, prato smeraldo, parquet e marmo. */
+function drawGroundTiles(
+  ctx: CanvasRenderingContext2D,
+  art: Art,
+  camX: number,
+  camY: number,
+  _t: number,
+) {
+  const minX = 3;
+  const maxX = 20;
+  const minY = 3;
+  const maxY = 20;
+
+  // 1. Spessore 3D volumetrico del basamento perimetrale in legno noce pregiato
+  const slabH = 18;
+
+  // Ombra morbida diffusa sotto la base del diorama
+  for (let x = minX; x <= maxX; x++) {
+    const { sx, sy } = worldToScreen(x, maxY, 0, camX, camY);
+    ctx.fillStyle = "rgba(60, 30, 15, 0.18)";
+    ctx.beginPath();
+    ctx.ellipse(sx, sy + slabH + 8, 36, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  for (let y = minY; y <= maxY; y++) {
+    const { sx, sy } = worldToScreen(maxX, y, 0, camX, camY);
+    ctx.fillStyle = "rgba(60, 30, 15, 0.18)";
+    ctx.beginPath();
+    ctx.ellipse(sx, sy + slabH + 8, 36, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Faccia 3D sinistra (rivolta verso SO) per tutte le colonne sul bordo sud (y = maxY)
+  for (let x = minX; x <= maxX; x++) {
+    const { sx, sy } = worldToScreen(x, maxY, 0, camX, camY);
+
+    // Faccia sud-ovest (esposta a luce calda)
+    const gLeft = ctx.createLinearGradient(sx - 32, sy, sx, sy + slabH);
+    gLeft.addColorStop(0, "#92400e");
+    gLeft.addColorStop(0.5, "#78350f");
+    gLeft.addColorStop(1, "#592b0c");
+    ctx.fillStyle = gLeft;
+    ctx.beginPath();
+    ctx.moveTo(sx - 32, sy);
+    ctx.lineTo(sx, sy + 16);
+    ctx.lineTo(sx, sy + 16 + slabH);
+    ctx.lineTo(sx - 32, sy + slabH);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#451a03";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Modanatura in ottone sul bordo inferiore
+    ctx.strokeStyle = "#d97706";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(sx - 32, sy + slabH);
+    ctx.lineTo(sx, sy + 16 + slabH);
+    ctx.stroke();
+
+    // Faccia sud-est (in rientranza tra le tessere)
+    const gRight = ctx.createLinearGradient(sx, sy, sx + 32, sy + slabH);
+    gRight.addColorStop(0, "#713f12");
+    gRight.addColorStop(0.5, "#592b0c");
+    gRight.addColorStop(1, "#3c1a05");
+    ctx.fillStyle = gRight;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy + 16);
+    ctx.lineTo(sx + 32, sy);
+    ctx.lineTo(sx + 32, sy + slabH);
+    ctx.lineTo(sx, sy + 16 + slabH);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#291002";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.strokeStyle = "#b45309";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy + 16 + slabH);
+    ctx.lineTo(sx + 32, sy + slabH);
+    ctx.stroke();
+  }
+
+  // Faccia 3D destra (rivolta verso SE) per tutte le colonne sul bordo est (x = maxX)
+  for (let y = minY; y < maxY; y++) {
+    const { sx, sy } = worldToScreen(maxX, y, 0, camX, camY);
+
+    const gRight = ctx.createLinearGradient(sx, sy, sx + 32, sy + slabH);
+    gRight.addColorStop(0, "#713f12");
+    gRight.addColorStop(0.5, "#592b0c");
+    gRight.addColorStop(1, "#3c1a05");
+    ctx.fillStyle = gRight;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy + 16);
+    ctx.lineTo(sx + 32, sy);
+    ctx.lineTo(sx + 32, sy + slabH);
+    ctx.lineTo(sx, sy + 16 + slabH);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#291002";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.strokeStyle = "#b45309";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy + 16 + slabH);
+    ctx.lineTo(sx + 32, sy + slabH);
+    ctx.stroke();
+  }
+
+  // 2. Piastrelle superiori della superficie
+  for (let x = minX; x <= maxX; x++) {
+    for (let y = minY; y <= maxY; y++) {
       const { sx, sy } = worldToScreen(x, y, 0, camX, camY);
 
       // Distinzione delle aree della villa
@@ -176,29 +303,37 @@ function drawGroundTiles(ctx: CanvasRenderingContext2D, camX: number, camY: numb
 
       let topColor = "#fdedd6";
       let borderColor = "#e3c79e";
+      let tileImg: HTMLImageElement | null = null;
+      const tiles = art.hub?.tiles;
 
       if (isBathPlatform) {
         topColor = (x + y) % 2 === 0 ? "#fdf2f8" : "#fce7f3"; // Marmo rosa del Bagno
         borderColor = "#fbcfe8";
-      } else if (isCourtyard) {
-        topColor = (x + y) % 2 === 0 ? "#ffeed9" : "#fbe3c7"; // Cotto caldo
-        borderColor = "#e8c9a3";
+        tileImg = tiles?.marble ?? null;
       } else if (isGarden) {
         topColor = (x + y) % 2 === 0 ? "#86efac" : "#4ade80"; // Prato verde smeraldo
         borderColor = "#22c55e";
+        tileImg = tiles?.grass ?? null;
       } else if (isTerrace) {
         topColor = (x + y) % 2 === 0 ? "#e0f2fe" : "#bae6fd"; // Piastrelle azzurro cielo
         borderColor = "#7dd3fc";
+        tileImg = tiles?.terrace ?? null;
+      } else if (isCourtyard) {
+        topColor = (x + y) % 2 === 0 ? "#ffeed9" : "#fbe3c7"; // Cotto caldo fiorentino
+        borderColor = "#e8c9a3";
+        tileImg = tiles?.cotto ?? null;
       } else if (isBedroom) {
         topColor = (x + y) % 2 === 0 ? "#fed7aa" : "#fdba74"; // Parquet miele
         borderColor = "#fb923c";
+        tileImg = tiles?.wood ?? null;
       } else {
         // Parquet caldo della casa
         topColor = (x + y) % 2 === 0 ? "#fae8d0" : "#f3dcc0";
         borderColor = "#dfc299";
+        tileImg = tiles?.wood ?? null;
       }
 
-      // Rombo base della piastrella
+      // 1. Sottofondo cromatico (evita buchi tra piastrelle ad alta risoluzione)
       ctx.fillStyle = topColor;
       ctx.beginPath();
       ctx.moveTo(sx, sy - 16);
@@ -208,73 +343,43 @@ function drawGroundTiles(ctx: CanvasRenderingContext2D, camX: number, camY: numb
       ctx.closePath();
       ctx.fill();
 
-      // Dettagli texture sui pavimenti
-      if (isGarden) {
-        // Erba e fiorellini di campo
-        if ((x * 7 + y * 13) % 4 === 0) {
-          // Margheritina
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.arc(sx - 4, sy - 2, 2.5, 0, Math.PI * 2);
-          ctx.arc(sx + 4, sy - 2, 2.5, 0, Math.PI * 2);
-          ctx.arc(sx, sy - 6, 2.5, 0, Math.PI * 2);
-          ctx.arc(sx, sy + 2, 2.5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = "#facc15";
-          ctx.beginPath();
-          ctx.arc(sx, sy - 2, 1.8, 0, Math.PI * 2);
-          ctx.fill();
-        } else if ((x * 5 + y * 11) % 3 === 0) {
-          // Ciuffetto d'erba
-          ctx.strokeStyle = "rgba(34, 197, 94, 0.75)";
-          ctx.lineWidth = 1.2;
-          ctx.beginPath();
-          ctx.moveTo(sx - 2, sy + 2);
-          ctx.lineTo(sx - 5, sy - 5);
-          ctx.moveTo(sx, sy + 2);
-          ctx.lineTo(sx, sy - 7);
-          ctx.moveTo(sx + 2, sy + 2);
-          ctx.lineTo(sx + 5, sy - 5);
-          ctx.stroke();
-        }
-      } else if (isCourtyard) {
-        // Cotto caldo fiorentino con elegante rombo decorativo centrale
-        ctx.strokeStyle = "rgba(194, 120, 75, 0.22)";
-        ctx.lineWidth = 1;
+      // 2. Sprite 3D illustrato autentico della pavimentazione
+      if (tileImg) {
+        ctx.drawImage(tileImg, sx - 32, sy - 16, 64.5, 32.5);
+      } else {
+        // Fallback vettoriale con bordo smussato
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = 0.8;
         ctx.beginPath();
-        ctx.moveTo(sx, sy - 7);
-        ctx.lineTo(sx + 14, sy);
-        ctx.lineTo(sx, sy + 7);
-        ctx.lineTo(sx - 14, sy);
+        ctx.moveTo(sx, sy - 16);
+        ctx.lineTo(sx + 32, sy);
+        ctx.lineTo(sx, sy + 16);
+        ctx.lineTo(sx - 32, sy);
         ctx.closePath();
-        ctx.stroke();
-      } else if (!isBathPlatform && !isTerrace) {
-        // Venature del legno del parquet
-        ctx.strokeStyle = "rgba(160, 110, 70, 0.18)";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(sx - 16, sy - 8);
-        ctx.lineTo(sx + 16, sy + 8);
-        ctx.moveTo(sx - 8, sy - 12);
-        ctx.lineTo(sx + 24, sy + 4);
         ctx.stroke();
       }
 
-      // Bordo con smussatura lucida
-      ctx.strokeStyle = borderColor;
-      ctx.lineWidth = 0.8;
-      ctx.beginPath();
-      ctx.moveTo(sx, sy - 16);
-      ctx.lineTo(sx + 32, sy);
-      ctx.lineTo(sx, sy + 16);
-      ctx.lineTo(sx - 32, sy);
-      ctx.closePath();
-      ctx.stroke();
+      // Tappeto reale rosso verso il Bagno d'Oro al centro
+      const isRedCarpet = (x === 11 || x === 12) && y >= 5 && y <= 9;
+      if (isRedCarpet) {
+        ctx.fillStyle = (x + y) % 2 === 0 ? "rgba(185, 28, 28, 0.88)" : "rgba(153, 27, 27, 0.88)";
+        ctx.beginPath();
+        ctx.moveTo(sx, sy - 16);
+        ctx.lineTo(sx + 32, sy);
+        ctx.lineTo(sx, sy + 16);
+        ctx.lineTo(sx - 32, sy);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = "rgba(251, 191, 36, 0.85)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
     }
   }
 }
 
-/** Renderizza l'orsetto protagonista con lo stesso sistema di falcata e animazione dei livelli. */
+/** Renderizza l'orsetto protagonista con falcata alternata, dondolio e squish & stretch. */
 function drawHubBear(
   ctx: CanvasRenderingContext2D,
   p: HubState["player"],
@@ -286,12 +391,20 @@ function drawHubBear(
 ) {
   const { sx, sy } = worldToScreen(p.wx, p.wy, p.wz, camX, camY);
 
-  // Ombra di contatto dinamica morbida sul pavimento
+  // Ombra a doppio strato: occlusione di contatto profonda sotto le zampine + ombra diffusa a terra
   const shadowDist = Math.max(0.3, 1 - p.wz * 0.28);
   const groundPos = worldToScreen(p.wx, p.wy, 0, camX, camY);
-  ctx.fillStyle = "rgba(70, 35, 15, 0.35)";
+
+  // 1. Ombra diffusa del corpo a terra
+  ctx.fillStyle = `rgba(60, 30, 15, ${0.35 * shadowDist})`;
   ctx.beginPath();
-  ctx.ellipse(groundPos.sx, groundPos.sy + 2, 22 * shadowDist, 10 * shadowDist, 0, 0, Math.PI * 2);
+  ctx.ellipse(groundPos.sx, groundPos.sy + 3, 24 * shadowDist, 10 * shadowDist, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 2. Occlusione di contatto scura direttamente sotto le zampine (non vola mai!)
+  ctx.fillStyle = `rgba(20, 10, 5, ${0.75 * shadowDist})`;
+  ctx.beginPath();
+  ctx.ellipse(groundPos.sx, groundPos.sy + 3, 14 * shadowDist, 5 * shadowDist, 0, 0, Math.PI * 2);
   ctx.fill();
 
   const isWalking = p.moving;
@@ -304,7 +417,7 @@ function drawHubBear(
   let offsetY = 0;
 
   if (isAirborne) {
-    // In volo (es. super rimbalzo dal trampolino BOING!)
+    // In volo (rimbalzo dal trampolino BOING!)
     sprite = p.vz > 0.5 ? (art.jump[1] ?? art.jump[0]) : (art.jump[2] ?? art.jump[0]);
     const factor = Math.min(0.2, Math.abs(p.vz) / 10);
     syScale = 1 + factor;
@@ -322,9 +435,8 @@ function drawHubBear(
       sprite = art.run[0] ?? art.idle[0];
     }
 
-    // Oscillazione destra/sinistra alternata a ogni passo (waddle)
-    const waddle = stepPhase * 0.075;
-    rot = waddle;
+    // Oscillazione ritmica (waddle)
+    rot = stepPhase * 0.075;
 
     // Rimbalzo e sollevamento ritmico del corpo
     offsetY = -Math.abs(stepPhase) * 4.5;
@@ -365,7 +477,7 @@ function drawHubBear(
   ctx.restore();
 }
 
-/** Renderizza un portale stanza con la porta d'arte 3D originale, zerbino e targa con stelline. */
+/** Renderizza un portale stanza con il maestoso arco in pietra 3D orientato in asse con il muro del livello. */
 function drawPortal(
   ctx: CanvasRenderingContext2D,
   portal: PortalInfo,
@@ -376,62 +488,84 @@ function drawPortal(
 ) {
   const { sx, sy } = worldToScreen(portal.wx, portal.wy, 0, camX, camY);
   const isGoal = portal.index === 7;
+  const flip = portal.flip ?? 1;
 
-  // 1. Zerbino di benvenuto davanti alla porta
-  if (art.mat) {
-    const mw = 48;
-    const mh = mw * (art.mat.height / art.mat.width);
-    ctx.drawImage(art.mat, sx - mw / 2, sy - mh / 2 + 6, mw, mh);
-  } else {
-    ctx.fillStyle = portal.locked ? "rgba(180, 160, 150, 0.45)" : "rgba(255, 215, 120, 0.65)";
-    ctx.beginPath();
-    ctx.ellipse(sx, sy + 4, 26, 12, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  // 0. Ombra a terra del portale e soglia in pietra scolpita (non vola mai!)
+  // Ombra diffusa a terra
+  ctx.fillStyle = "rgba(45, 20, 10, 0.4)";
+  ctx.beginPath();
+  ctx.ellipse(sx, sy + 3, 32, 13, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // 2. Luce calda accogliente che filtra dall'interno della stanza se aperta
-  if (!portal.locked) {
-    const glow = ctx.createRadialGradient(sx, sy - 28, 2, sx, sy - 28, 36);
-    glow.addColorStop(0, "rgba(254, 240, 138, 0.85)");
-    glow.addColorStop(1, "rgba(254, 240, 138, 0)");
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.ellipse(sx, sy - 28, 38, 48, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  // Occlusione di contatto profonda alla base dei due pilastri dell'arco
+  ctx.fillStyle = "rgba(20, 10, 5, 0.75)";
+  ctx.beginPath();
+  ctx.ellipse(sx - 18 * flip, sy + 2, 8, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(sx + 18 * flip, sy + 2, 8, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // 3. Struttura porta con sprite door originale
-  const doorH = 74;
-  if (art.door) {
-    const doorW = doorH * (art.door.width / art.door.height);
+  // Zerbino / soglia d'ingresso in pietra
+  ctx.fillStyle = portal.locked ? "rgba(156, 163, 175, 0.3)" : "rgba(217, 119, 6, 0.35)";
+  ctx.beginPath();
+  ctx.ellipse(sx, sy + 2, 22, 9, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 1. Struttura portale: arco in pietra scolpita orientato in asse con il rispettivo muro
+  const archImg = art.hub.arch;
+  const archH = 98;
+
+  if (archImg) {
+    const archW = archH * (archImg.width / archImg.height);
     ctx.save();
+    ctx.translate(sx, sy);
+    ctx.scale(flip, 1);
     if (portal.locked) {
       // Porta chiusa: ombra più scura
-      ctx.filter = "brightness(0.65) saturate(0.8)";
+      ctx.filter = "brightness(0.72) saturate(0.85)";
     }
-    ctx.drawImage(art.door, sx - doorW / 2, sy - doorH, doorW, doorH);
+    ctx.drawImage(archImg, -archW / 2, -archH + 6, archW, archH);
     ctx.restore();
-  } else {
-    // Fallback procedurale elegante
-    const woodGrad = ctx.createLinearGradient(sx, sy - doorH, sx, sy);
-    woodGrad.addColorStop(0, isGoal ? "#fde68a" : "#d97706");
-    woodGrad.addColorStop(1, isGoal ? "#b45309" : "#78350f");
-    ctx.fillStyle = woodGrad;
-    ctx.beginPath();
-    ctx.roundRect(sx - 24, sy - doorH, 48, doorH, [16, 16, 2, 2]);
-    ctx.fill();
+
+    // Se aperta: luce calda ambrata brillante che fuoriesce dalla soglia
+    if (!portal.locked) {
+      const glow = ctx.createRadialGradient(sx, sy - 44, 4, sx, sy - 44, 32);
+      glow.addColorStop(0, "rgba(254, 240, 138, 0.5)");
+      glow.addColorStop(1, "rgba(254, 240, 138, 0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.ellipse(sx, sy - 44, 24, 32, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (art.door) {
+    const doorH = 74;
+    const doorW = doorH * (art.door.width / art.door.height);
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.scale(flip, 1);
+    if (portal.locked) ctx.filter = "brightness(0.65) saturate(0.8)";
+    ctx.drawImage(art.door, -doorW / 2, -doorH, doorW, doorH);
+    ctx.restore();
   }
 
-  // Se è il Bagno d'Oro: posiziona la tazza del water scintillante accanto alla porta!
+  // Se è il Bagno d'Oro: posiziona la tazza del water scintillante con ombra a terra (non volante!)
   if (isGoal && art.toilet) {
-    const th = 46;
+    const th = 48;
     const tw = th * (art.toilet.width / art.toilet.height);
-    const bob = Math.sin(t * 3.5) * 2;
-    ctx.drawImage(art.toilet, sx + 24, sy - th - 2 + bob, tw, th);
+    const tx = sx + 34;
+    const ty = sy + 2;
+
+    // Ombra di contatto sotto il trono dorato del water
+    ctx.fillStyle = "rgba(40, 20, 10, 0.55)";
+    ctx.beginPath();
+    ctx.ellipse(tx + tw / 2, ty, 15, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const bob = Math.sin(t * 3.5) * 1.5;
+    ctx.drawImage(art.toilet, tx, ty - th + bob, tw, th);
   }
 
-  // 4. Insegna in legno pregiato con Nome Stanza & Icona
-  const badgeY = sy - doorH - 12;
+  // 2. Insegna elegante in legno con Nome Stanza & Icona (sempre orizzontale e leggibile)
+  const badgeY = sy - archH - 10;
   ctx.fillStyle = "#ffffff";
   ctx.beginPath();
   ctx.roundRect(sx - 48, badgeY - 13, 96, 26, 13);
@@ -446,7 +580,7 @@ function drawPortal(
   ctx.fillStyle = "#451a03";
   ctx.fillText(`${portal.icon} ${portal.name}`, sx, badgeY);
 
-  // 5. Stelline d'oro guadagnate (usando art.star o rendering vettoriale d'oro)
+  // 3. Stelline d'oro guadagnate
   if (!portal.locked) {
     const starsY = badgeY - 15;
     for (let s = 0; s < 3; s++) {
@@ -460,23 +594,22 @@ function drawPortal(
       }
     }
 
-    // Se trovata la Paperella d'Oro segreta nella stanza: mostra il trofeo d'arte accanto alla porta!
+    // Se trovata la Paperella d'Oro segreta: mostra il trofeo d'arte
     if (portal.duck) {
       if (art.goldduck) {
-        ctx.drawImage(art.goldduck, sx + 34, badgeY - 12, 20, 20);
-      } else {
-        ctx.font = "15px sans-serif";
-        ctx.fillText("🦆", sx + 42, badgeY);
+        ctx.drawImage(art.goldduck, sx + 36, badgeY - 12, 22, 22);
       }
     }
   } else {
-    // Lucchetto d'ottone con catenella
-    ctx.font = "18px sans-serif";
-    ctx.fillText("🔒", sx, sy - 34);
+    // Lucchetto d'ottone al centro dell'arco chiuso
+    ctx.font = "24px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🔒", sx, sy - 42);
   }
 }
 
-/** Renderizza i personaggi amici nel loro stile ad alta fedeltà. */
+/** Renderizza gli amici NPC usando gli sprite 3D illustrati originali saldati al terreno. */
 function drawNpc(
   ctx: CanvasRenderingContext2D,
   npc: NpcInfo,
@@ -487,215 +620,74 @@ function drawNpc(
 ) {
   const { sx, sy } = worldToScreen(npc.wx, npc.wy, 0, camX, camY);
 
-  // Ombra morbida di contatto a terra
-  ctx.fillStyle = "rgba(70, 35, 15, 0.32)";
+  // 1. Ombra a doppio strato: diffusa a terra + occlusione di contatto profonda sotto le zampe
+  ctx.fillStyle = "rgba(60, 30, 15, 0.35)";
   ctx.beginPath();
-  ctx.ellipse(sx, sy + 3, 20, 9, 0, 0, Math.PI * 2);
+  ctx.ellipse(sx, sy + 3, 26, 11, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(20, 10, 5, 0.75)";
+  ctx.beginPath();
+  ctx.ellipse(sx, sy + 3, 16, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.save();
-  const bob = Math.sin(t * 3 + npc.wx) * 1.5;
-  ctx.translate(sx, sy + bob);
+  // Piedini sempre saldati a terra (sy + 4), respiro naturale con leggera oscillazione volumetrica
+  const breath = Math.sin(t * 2.8 + (npc.wx % 4)) * 0.025;
+  ctx.translate(sx, sy + 4);
+  ctx.scale(1 - breath * 0.4, 1 + breath);
+
+  let labelY = -80;
 
   if (npc.id === "mamma") {
-    // 🐻 MAMMA ORSA: Disegnata con lo stesso sprite d'arte dell'Orso, con grembiule rosa a cuore e fiore tra i capelli
-    const sprite = art.idle[0];
-    const size = 68;
-    if (sprite) {
-      ctx.drawImage(sprite, -size / 2, -size + 4, size, size);
+    // 🐻 MAMMA ORSA: Sprite 3D illustrato con grembiule floreale e cuffietta bianca
+    const img = art.hub.mamma;
+    const h = 88;
+    if (img) {
+      const w = h * (img.width / img.height);
+      ctx.drawImage(img, -w / 2, -h, w, h);
     }
-
-    // Grembiulino rosa con volant
-    ctx.fillStyle = "rgba(244, 114, 182, 0.85)";
-    ctx.beginPath();
-    ctx.roundRect(-16, -38, 32, 24, 6);
-    ctx.fill();
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 1.8;
-    ctx.stroke();
-
-    // Cuoricino rosso sul grembiule
-    ctx.fillStyle = "#ef4444";
-    ctx.font = "12px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("❤️", 0, -24);
-
-    // Fiorellino rosa/giallo all'orecchio
-    ctx.fillStyle = "#fb7185";
-    ctx.beginPath();
-    ctx.arc(14, -58, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#facc15";
-    ctx.beginPath();
-    ctx.arc(14, -58, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Guanciotte rosee da mamma
-    ctx.fillStyle = "rgba(244, 114, 182, 0.45)";
-    ctx.beginPath();
-    ctx.arc(-14, -40, 5, 0, Math.PI * 2);
-    ctx.arc(14, -40, 5, 0, Math.PI * 2);
-    ctx.fill();
+    labelY = -h - 8;
   } else if (npc.id === "papa") {
-    // 🧸 PAPÀ ORSO: Più alto e robusto, con gilet blu e bottoni d'oro e occhialetti da lettura
-    const sprite = art.idle[0];
-    const size = 76; // Scala più grande per papà
-    ctx.save();
-    ctx.scale(1.12, 1.12);
-    if (sprite) {
-      ctx.drawImage(sprite, -size / 2, -size + 4, size, size);
+    // 🧸 PAPÀ ORSO: Sprite 3D illustrato con gilet blu in lana e occhialetti da lettura
+    const img = art.hub.papa;
+    const h = 96;
+    if (img) {
+      const w = h * (img.width / img.height);
+      ctx.drawImage(img, -w / 2, -h, w, h);
     }
-
-    // Gilet blu elegante
-    ctx.fillStyle = "rgba(37, 99, 235, 0.85)";
-    ctx.beginPath();
-    ctx.roundRect(-18, -42, 36, 26, 6);
-    ctx.fill();
-    ctx.strokeStyle = "#1e40af";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    // Bottoncini dorati del gilet
-    ctx.fillStyle = "#facc15";
-    ctx.beginPath();
-    ctx.arc(0, -36, 2, 0, Math.PI * 2);
-    ctx.arc(0, -28, 2, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Occhiali da lettura simpatici
-    ctx.strokeStyle = "#78350f";
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.arc(-8, -48, 4.5, 0, Math.PI * 2);
-    ctx.arc(8, -48, 4.5, 0, Math.PI * 2);
-    ctx.moveTo(-3.5, -48);
-    ctx.lineTo(3.5, -48);
-    ctx.stroke();
-    ctx.restore();
+    labelY = -h - 8;
   } else if (npc.id === "micio") {
-    // 🐱 MICIO IL GATTO: Adagiato morbidamente sul vero Cuscino (art.pillow) con fusa e coda animata
+    // 🐱 MICIO IL GATTO: Sprite 3D addormentato sul soffice cuscino rosa (art.pillow)
     if (art.pillow) {
-      const pw = 48;
+      const pw = 68;
       const ph = pw * (art.pillow.height / art.pillow.width);
-      ctx.drawImage(art.pillow, -pw / 2, -ph / 2 - 4, pw, ph);
-    } else {
-      ctx.fillStyle = "#a855f7";
-      ctx.beginPath();
-      ctx.ellipse(0, -4, 24, 12, 0, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.drawImage(art.pillow, -pw / 2, -ph + 4, pw, ph);
+    }
+    const catImg = art.hub.micio;
+    const cw = 56;
+    if (catImg) {
+      const ch = cw * (catImg.height / catImg.width);
+      ctx.drawImage(catImg, -cw / 2, -ch - 2, cw, ch);
     }
 
-    // Gatto tigrato arancio che dorme beato
-    ctx.fillStyle = "#fb923c";
-    ctx.beginPath();
-    ctx.ellipse(0, -18, 16, 12, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Strisce del pelo
-    ctx.strokeStyle = "#c2410c";
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.moveTo(-6, -26);
-    ctx.lineTo(-4, -20);
-    ctx.moveTo(0, -28);
-    ctx.lineTo(0, -20);
-    ctx.moveTo(6, -26);
-    ctx.lineTo(4, -20);
-    ctx.stroke();
-
-    // Orecchie a punta
-    ctx.fillStyle = "#fb923c";
-    ctx.beginPath();
-    ctx.moveTo(-11, -26);
-    ctx.lineTo(-5, -34);
-    ctx.lineTo(-1, -26);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(1, -26);
-    ctx.lineTo(5, -34);
-    ctx.lineTo(11, -26);
-    ctx.fill();
-
-    // Occhietti chiusi che sorridono ^ ^
-    ctx.strokeStyle = "#7c2d12";
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.arc(-5, -17, 3, Math.PI, 0);
-    ctx.arc(5, -17, 3, Math.PI, 0);
-    ctx.stroke();
-
-    // Coda che si muove lentamente
-    const tailAngle = Math.sin(t * 3) * 6;
-    ctx.strokeStyle = "#fb923c";
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.moveTo(12, -15);
-    ctx.quadraticCurveTo(20 + tailAngle, -24, 18 + tailAngle, -30);
-    ctx.stroke();
-
-    // Nuvoletta Zzz se dorme
-    ctx.font = '800 12px "Fredoka", sans-serif';
-    ctx.fillStyle = "rgba(168, 85, 247, 0.85)";
-    ctx.fillText("Zzz...", 16, -34 + Math.sin(t * 2) * 3);
-  } else if (npc.id === "coniglio") {
-    // 🐰 BABBO CONIGLIO: Commerciante dietro al bancone con lunghe orecchie mobili e papillon
-    ctx.fillStyle = "#f8fafc";
-    ctx.beginPath();
-    ctx.arc(0, -26, 18, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Lunghe orecchie da coniglio che oscillano
-    const earWiggle = Math.sin(t * 4) * 2;
-    ctx.fillStyle = "#f8fafc";
-    ctx.beginPath();
-    ctx.roundRect(-12 + earWiggle, -56, 8, 28, 4);
-    ctx.roundRect(4 - earWiggle, -56, 8, 28, 4);
-    ctx.fill();
-    ctx.fillStyle = "#f472b6";
-    ctx.beginPath();
-    ctx.roundRect(-10 + earWiggle, -52, 4, 22, 2);
-    ctx.roundRect(6 - earWiggle, -52, 4, 22, 2);
-    ctx.fill();
-
-    // Papillon viola con gemma dorata
-    ctx.fillStyle = "#8b5cf6";
-    ctx.beginPath();
-    ctx.moveTo(0, -14);
-    ctx.lineTo(-7, -19);
-    ctx.lineTo(-7, -9);
-    ctx.closePath();
-    ctx.moveTo(0, -14);
-    ctx.lineTo(7, -19);
-    ctx.lineTo(7, -9);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = "#facc15";
-    ctx.beginPath();
-    ctx.arc(0, -14, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Faccina dolce con nasino rosa
-    ctx.fillStyle = "#1e293b";
-    ctx.beginPath();
-    ctx.arc(-5, -28, 2, 0, Math.PI * 2);
-    ctx.arc(5, -28, 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#f472b6";
-    ctx.beginPath();
-    ctx.arc(0, -24, 2.8, 0, Math.PI * 2);
-    ctx.fill();
+    // Nuvoletta Zzz fluttuante
+    ctx.font = '800 13px "Fredoka", sans-serif';
+    ctx.fillStyle = "rgba(168, 85, 247, 0.9)";
+    ctx.fillText("Zzz...", 20, -44 + Math.sin(t * 2) * 3);
+    labelY = -62;
   }
 
   // Nome sopra l'NPC in stampatello chiaro
   ctx.font = '800 12px "Fredoka", "Nunito", sans-serif';
   ctx.textAlign = "center";
   ctx.fillStyle = "#451a03";
-  ctx.fillText(npc.name, 0, -56);
+  ctx.fillText(npc.name, 0, labelY);
 
   ctx.restore();
 }
 
-/** Fontana centrale monumentale con la Paperella d'Oro 3D originale. */
+/** Fontana monumentale in marmo con Paperella d'Oro 3D illustrata (art.hub.fountain). */
 function drawCentralFountain(
   ctx: CanvasRenderingContext2D,
   wx: number,
@@ -707,74 +699,41 @@ function drawCentralFountain(
 ) {
   const { sx, sy } = worldToScreen(wx, wy, 0, camX, camY);
 
-  // Bordo monumentale in pietra scolpita con modanatura
-  ctx.fillStyle = "#cbd5e1";
+  // Ombra monumentale a terra a doppio strato
+  ctx.fillStyle = "rgba(60, 30, 15, 0.38)";
   ctx.beginPath();
-  ctx.ellipse(sx, sy, 48, 24, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = "#94a3b8";
-  ctx.lineWidth = 3.5;
-  ctx.stroke();
-
-  // Bacino d'acqua turchese brillante
-  ctx.fillStyle = "#38bdf8";
-  ctx.beginPath();
-  ctx.ellipse(sx, sy, 40, 19, 0, 0, Math.PI * 2);
+  ctx.ellipse(sx, sy + 6, 56, 26, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Onde concentriche animate
-  for (let w = 0; w < 3; w++) {
-    const waveR = ((t * 18 + w * 12) % 36) + 4;
-    ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(0, 0.6 - waveR / 40)})`;
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.ellipse(sx, sy, waveR, waveR * 0.46, 0, 0, Math.PI * 2);
-    ctx.stroke();
+  // Occlusione di contatto profonda sotto il basamento in pietra
+  ctx.fillStyle = "rgba(20, 10, 5, 0.75)";
+  ctx.beginPath();
+  ctx.ellipse(sx, sy + 6, 44, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const img = art.hub.fountain;
+  const fw = 118;
+  if (img) {
+    const fh = fw * (img.height / img.width);
+    ctx.drawImage(img, sx - fw / 2, sy - fh + 8, fw, fh);
   }
 
-  // Piedistallo centrale in marmo
-  ctx.fillStyle = "#e2e8f0";
-  ctx.beginPath();
-  ctx.ellipse(sx, sy - 6, 16, 8, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = "#94a3b8";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  // Statua della Paperella d'Oro originale con aura luccicante
-  const duckBob = Math.sin(t * 4) * 2.5;
-  if (art.goldduck) {
-    const dw = 38;
-    const dh = dw * (art.goldduck.height / art.goldduck.width);
-    // Bagliore d'oro intorno alla paperella
-    const glow = ctx.createRadialGradient(sx, sy - 18 + duckBob, 2, sx, sy - 18 + duckBob, 28);
-    glow.addColorStop(0, "rgba(254, 240, 138, 0.75)");
-    glow.addColorStop(1, "rgba(254, 240, 138, 0)");
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(sx, sy - 18 + duckBob, 28, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.drawImage(art.goldduck, sx - dw / 2, sy - dh - 8 + duckBob, dw, dh);
-  } else {
-    ctx.font = "28px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("🦆", sx, sy - 16 + duckBob);
-  }
-
-  // Scintille d'oro che salgono
-  for (let s = 0; s < 3; s++) {
-    const spX = sx + Math.sin(t * 3 + s * 2) * 20;
-    const spY = sy - 24 - ((t * 22 + s * 16) % 26);
+  // Scintille d'oro magiche fluttuanti dall'acqua
+  for (let s = 0; s < 4; s++) {
+    const spX = sx + Math.sin(t * 3 + s * 1.8) * 30;
+    const spY = sy - 42 - ((t * 20 + s * 15) % 38);
     ctx.fillStyle = "#facc15";
     ctx.beginPath();
-    ctx.arc(spX, spY, 1.6, 0, Math.PI * 2);
+    ctx.arc(spX, spY, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+    ctx.beginPath();
+    ctx.arc(spX - 0.5, spY - 0.5, 0.8, 0, Math.PI * 2);
     ctx.fill();
   }
 }
 
-/** Gazebo del Bazar con tendone a righe e banco accessori. */
+/** Gazebo del Bazar delle Stelline con Babbo Coniglio illustrato (art.hub.bazar). */
 function drawShopGazebo(
   ctx: CanvasRenderingContext2D,
   wx: number,
@@ -786,107 +745,92 @@ function drawShopGazebo(
 ) {
   const { sx, sy } = worldToScreen(wx, wy, 0, camX, camY);
 
-  // Ombra gazebo
-  ctx.fillStyle = "rgba(70, 35, 15, 0.35)";
+  // 1. Ombra diffusa sotto l'intero gazebo del bazar
+  ctx.fillStyle = "rgba(60, 30, 15, 0.35)";
   ctx.beginPath();
-  ctx.ellipse(sx, sy + 4, 38, 16, 0, 0, Math.PI * 2);
+  ctx.ellipse(sx, sy + 6, 54, 24, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Banco di legno nobile del negozio
-  const woodGrad = ctx.createLinearGradient(sx - 36, sy - 26, sx + 36, sy);
-  woodGrad.addColorStop(0, "#92400e");
-  woodGrad.addColorStop(1, "#78350f");
-  ctx.fillStyle = woodGrad;
+  // 2. Occlusione di contatto profonda sotto i piedi d'appoggio in legno
+  ctx.fillStyle = "rgba(20, 10, 5, 0.75)";
   ctx.beginPath();
-  ctx.roundRect(sx - 36, sy - 26, 72, 24, 5);
+  ctx.ellipse(sx - 26, sy + 5, 10, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(sx + 26, sy + 5, 10, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(sx, sy + 6, 16, 5, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = "#451a03";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
 
-  // Bottiglie di borotalco e stelline esposte sul banco
-  if (art.powder) {
-    ctx.drawImage(art.powder, sx - 28, sy - 34, 16, 16);
-  }
-  if (art.star) {
-    ctx.drawImage(art.star, sx + 14, sy - 33, 14, 14);
+  const img = art.hub.bazar;
+  const bw = 120;
+  if (img) {
+    const bh = bw * (img.height / img.width);
+    ctx.drawImage(img, sx - bw / 2, sy - bh + 6, bw, bh);
   }
 
-  // Pali di sostegno del tendone
-  ctx.fillStyle = "#b45309";
-  ctx.fillRect(sx - 38, sy - 64, 4, 40);
-  ctx.fillRect(sx + 34, sy - 64, 4, 40);
-
-  // Tendone a strisce festose (rosso carminio e crema)
-  const canopyW = 82;
-  const canopyH = 34;
-  const canY = sy - 66;
-
-  ctx.fillStyle = "#ef4444";
+  // Insegna fluttuante sopra il bazar
+  const tagY = sy - 114;
+  ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
   ctx.beginPath();
-  ctx.moveTo(sx - canopyW / 2, canY);
-  ctx.lineTo(sx + canopyW / 2, canY);
-  ctx.lineTo(sx + canopyW / 2 + 6, canY + canopyH);
-  ctx.lineTo(sx - canopyW / 2 - 6, canY + canopyH);
-  ctx.closePath();
+  ctx.roundRect(sx - 44, tagY - 12, 88, 24, 12);
   ctx.fill();
-
-  // Strisce crema e smerlature
-  ctx.fillStyle = "#fffbeb";
-  for (let s = 0; s < 4; s++) {
-    const stX = sx - canopyW / 2 + 6 + s * 19;
-    ctx.fillRect(stX, canY, 9, canopyH);
-  }
-
-  // Insegna festosa "🛍️ BAZAR DELLE STELLINE"
-  ctx.fillStyle = "#fef08a";
-  ctx.beginPath();
-  ctx.roundRect(sx - 34, canY - 15, 68, 20, 10);
-  ctx.fill();
-  ctx.strokeStyle = "#eab308";
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#f59e0b";
+  ctx.lineWidth = 1.8;
   ctx.stroke();
 
   ctx.font = '800 11px "Fredoka", "Nunito", sans-serif';
   ctx.fillStyle = "#713f12";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("🛍️ BAZAR", sx, canY - 4);
+  ctx.fillText("🛍️ BAZAR", sx, tagY);
 }
 
-/** Trampolino elastico con molle e pedana cyan. */
+/** Trampolino elastico giocattolo 3D illustrato (art.hub.trampoline). */
 function drawCourtyardTrampoline(
   ctx: CanvasRenderingContext2D,
   wx: number,
   wy: number,
+  art: Art,
   camX: number,
   camY: number,
   t: number,
 ) {
   const { sx, sy } = worldToScreen(wx, wy, 0, camX, camY);
 
-  // Telaio metallico in acciaio e molle
-  ctx.fillStyle = "#1e293b";
+  // 1. Ombra diffusa a terra sotto il tappeto elastico
+  ctx.fillStyle = "rgba(50, 25, 10, 0.32)";
   ctx.beginPath();
-  ctx.ellipse(sx, sy, 34, 18, 0, 0, Math.PI * 2);
+  ctx.ellipse(sx, sy + 5, 38, 18, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = "#38bdf8";
-  ctx.lineWidth = 4;
-  ctx.stroke();
 
-  // Bordo di protezione e bersaglio cyan
-  ctx.fillStyle = "#0284c7";
+  // 2. Occlusione di contatto profonda sotto le gambe in acciaio
+  ctx.fillStyle = "rgba(15, 10, 5, 0.75)";
   ctx.beginPath();
-  ctx.ellipse(sx, sy, 22, 11, 0, 0, Math.PI * 2);
+  ctx.ellipse(sx - 22, sy + 5, 6, 3, 0, 0, Math.PI * 2);
+  ctx.ellipse(sx + 22, sy + 5, 6, 3, 0, 0, Math.PI * 2);
+  ctx.ellipse(sx, sy + 6, 8, 3, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  const img = art.hub.trampoline;
+  const trW = 78;
+  if (img) {
+    const trH = trW * (img.height / img.width);
+    ctx.drawImage(img, sx - trW / 2, sy - trH + 6, trW, trH);
+  }
 
   // Freccia e indicatore di salto BOING!
   const arrowBob = Math.sin(t * 6) * 3;
-  ctx.font = '800 13px "Fredoka", sans-serif';
+  ctx.fillStyle = "#0284c7";
+  ctx.beginPath();
+  ctx.roundRect(sx - 36, sy - 54 + arrowBob, 72, 22, 11);
+  ctx.fill();
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+
+  ctx.font = '800 11px "Fredoka", sans-serif';
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("⬆️ BOING!", sx, sy - 14 + arrowBob);
+  ctx.fillText("⬆️ BOING!", sx, sy - 43 + arrowBob);
 }
 
 /** Pallone da spiaggia con rendering volumetrico 3D. */
@@ -898,7 +842,7 @@ function drawBeachBall(
 ) {
   const { sx, sy } = worldToScreen(ball.wx, ball.wy, ball.wz, camX, camY);
 
-  // Ombra a terra del pallone che si riduce e sfuma quando vola in alto
+  // Ombra a terra del pallone
   const shadowDist = Math.max(0.25, 1 - ball.wz * 0.25);
   const groundPos = worldToScreen(ball.wx, ball.wy, 0, camX, camY);
   ctx.fillStyle = `rgba(70, 35, 15, ${0.4 * shadowDist})`;
@@ -918,17 +862,19 @@ function drawBeachBall(
   ctx.fill();
 
   // Spicchio giallo
-  ctx.fillStyle = "#facc15";
+  ctx.fillStyle = "#eab308";
   ctx.beginPath();
+  ctx.moveTo(0, 0);
   ctx.arc(0, 0, r, 0, Math.PI * 0.65);
-  ctx.lineTo(0, 0);
+  ctx.closePath();
   ctx.fill();
 
   // Spicchio blu
   ctx.fillStyle = "#3b82f6";
   ctx.beginPath();
-  ctx.arc(0, 0, r, Math.PI, Math.PI * 1.65);
-  ctx.lineTo(0, 0);
+  ctx.moveTo(0, 0);
+  ctx.arc(0, 0, r, Math.PI * 0.65, Math.PI * 1.35);
+  ctx.closePath();
   ctx.fill();
 
   // Giunzioni bianche
@@ -938,7 +884,7 @@ function drawBeachBall(
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Riflesso speculare lucido sul pallone
+  // Riflesso speculare lucido
   ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
   ctx.beginPath();
   ctx.ellipse(-r * 0.35, -r * 0.35, r * 0.35, r * 0.22, -0.6, 0, Math.PI * 2);
@@ -947,81 +893,87 @@ function drawBeachBall(
   ctx.restore();
 }
 
-/** Alberi di mele e cespugli di rose curati in volume e sfumatura. */
+/** Alberi di mele e cespugli di rose illustrati (art.hub.tree, art.hub.bush). */
 function drawDecorTree(
   ctx: CanvasRenderingContext2D,
   wx: number,
   wy: number,
   kind: string,
+  art: Art,
   camX: number,
   camY: number,
   _t: number,
 ) {
   const { sx, sy } = worldToScreen(wx, wy, 0, camX, camY);
 
-  // Ombra alla base
-  ctx.fillStyle = "rgba(70, 35, 15, 0.28)";
-  ctx.beginPath();
-  ctx.ellipse(sx, sy + 3, 18, 8, 0, 0, Math.PI * 2);
-  ctx.fill();
-
   if (kind === "apple") {
-    // Tronco in legno nodoso
-    ctx.fillStyle = "#78350f";
-    ctx.fillRect(sx - 4.5, sy - 26, 9, 26);
-
-    // Chioma volumetrica sfumata
-    const leafGrad = ctx.createRadialGradient(sx - 6, sy - 44, 4, sx, sy - 40, 26);
-    leafGrad.addColorStop(0, "#4ade80");
-    leafGrad.addColorStop(1, "#15803d");
-    ctx.fillStyle = leafGrad;
+    // Ombra diffusa albero
+    ctx.fillStyle = "rgba(60, 30, 15, 0.35)";
     ctx.beginPath();
-    ctx.arc(sx, sy - 40, 24, 0, Math.PI * 2);
+    ctx.ellipse(sx, sy + 4, 30, 14, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Mele rosse lucide
-    const apples = [
-      { x: sx - 10, y: sy - 46 },
-      { x: sx + 12, y: sy - 40 },
-      { x: sx - 2, y: sy - 30 },
-      { x: sx + 4, y: sy - 52 },
-    ];
-    for (const a of apples) {
-      ctx.fillStyle = "#ef4444";
-      ctx.beginPath();
-      ctx.arc(a.x, a.y, 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-      ctx.beginPath();
-      ctx.arc(a.x - 1.2, a.y - 1.2, 1.2, 0, Math.PI * 2);
-      ctx.fill();
+    // Occlusione di contatto profonda sotto il tronco
+    ctx.fillStyle = "rgba(20, 10, 5, 0.75)";
+    ctx.beginPath();
+    ctx.ellipse(sx, sy + 4, 14, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const img = art.hub.tree;
+    const tw = 92;
+    if (img) {
+      const th = tw * (img.height / img.width);
+      ctx.drawImage(img, sx - tw / 2, sy - th + 8, tw, th);
     }
   } else {
-    // Cespuglio di rose in fiore
-    const bushGrad = ctx.createRadialGradient(sx - 4, sy - 18, 2, sx, sy - 14, 18);
-    bushGrad.addColorStop(0, "#22c55e");
-    bushGrad.addColorStop(1, "#14532d");
-    ctx.fillStyle = bushGrad;
+    // Cespuglio di rose fiorite
+    ctx.fillStyle = "rgba(60, 30, 15, 0.3)";
     ctx.beginPath();
-    ctx.arc(sx, sy - 14, 18, 0, Math.PI * 2);
+    ctx.ellipse(sx, sy + 3, 24, 11, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Fiori di rosa carminio
-    const roses = [
-      { x: sx - 7, y: sy - 18 },
-      { x: sx + 8, y: sy - 14 },
-      { x: sx, y: sy - 8 },
-    ];
-    for (const r of roses) {
-      ctx.fillStyle = "#f43f5e";
-      ctx.beginPath();
-      ctx.arc(r.x, r.y, 4.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#fda4af";
-      ctx.beginPath();
-      ctx.arc(r.x - 1, r.y - 1, 2, 0, Math.PI * 2);
-      ctx.fill();
+    ctx.fillStyle = "rgba(20, 10, 5, 0.7)";
+    ctx.beginPath();
+    ctx.ellipse(sx, sy + 3, 16, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const img = art.hub.bush;
+    const bw = 58;
+    if (img) {
+      const bh = bw * (img.height / img.width);
+      ctx.drawImage(img, sx - bw / 2, sy - bh + 6, bw, bh);
     }
+  }
+}
+
+/** Staccionata in legno bianco con fiori rampicanti (art.hub.fence). */
+function drawGardenFence(
+  ctx: CanvasRenderingContext2D,
+  wx: number,
+  wy: number,
+  art: Art,
+  camX: number,
+  camY: number,
+) {
+  const { sx, sy } = worldToScreen(wx, wy, 0, camX, camY);
+
+  // Ombra diffusa staccionata
+  ctx.fillStyle = "rgba(60, 30, 15, 0.28)";
+  ctx.beginPath();
+  ctx.ellipse(sx, sy + 3, 26, 11, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Occlusione di contatto sotto i paletti
+  ctx.fillStyle = "rgba(20, 10, 5, 0.65)";
+  ctx.beginPath();
+  ctx.ellipse(sx, sy + 3, 20, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const img = art.hub.fence;
+  const fw = 60;
+  if (img) {
+    const fh = fw * (img.height / img.width);
+    ctx.drawImage(img, sx - fw / 2, sy - fh + 6, fw, fh);
   }
 }
 

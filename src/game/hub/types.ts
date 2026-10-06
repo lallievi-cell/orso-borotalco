@@ -10,6 +10,7 @@ export type PortalInfo = {
   locked: boolean;
   stars: number;
   duck: boolean;
+  flip?: number; // 1 = rivolto SE, -1 = specchiato SW lungo il muro NE
 };
 
 export type NpcKind = "mamma" | "papa" | "micio" | "paperella" | "coniglio";
