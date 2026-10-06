@@ -42,6 +42,10 @@ export type Art = {
       marble: HTMLImageElement | null;
     };
   };
+  boss: {
+    kingPillow: HTMLImageElement | null;
+    kingPillowLaugh: HTMLImageElement | null;
+  };
   bg: Record<Theme, HTMLImageElement | null>;
 };
 
@@ -72,6 +76,7 @@ export async function loadArt(): Promise<Art> {
     salotto, corridoio, bagno, cucina, giardino, lavanderia, cameretta, terrazzo,
     hubMamma, hubPapa, hubMicio, hubBazar, hubFountain, hubTree, hubBush, hubTrampoline, hubArch, hubFence,
     tileCotto, tileGrass, tileWood, tileTerrace, tileMarble,
+    bossKingPillow, bossKingPillowLaugh,
   ] = await Promise.all([
     seq("/sprites/bear", "idle"),
     seq("/sprites/bear", "run"),
@@ -118,6 +123,8 @@ export async function loadArt(): Promise<Art> {
     load("/sprites/hub/tiles/wood.png"),
     load("/sprites/hub/tiles/terrace.png"),
     load("/sprites/hub/tiles/marble.png"),
+    load("/sprites/boss/king_pillow.png"),
+    load("/sprites/boss/king_pillow_laugh.png"),
   ]);
   return {
     idle, run, jump,
@@ -142,6 +149,10 @@ export async function loadArt(): Promise<Art> {
         terrace: tileTerrace,
         marble: tileMarble,
       },
+    },
+    boss: {
+      kingPillow: bossKingPillow,
+      kingPillowLaugh: bossKingPillowLaugh,
     },
     bg: { salotto, corridoio, bagno, cucina, giardino, lavanderia, cameretta, terrazzo },
   };

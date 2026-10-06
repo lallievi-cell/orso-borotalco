@@ -12,7 +12,9 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",
+    "@types/canvas-confetti": "^1.9.0",
     "@vitejs/plugin-react": "^5.2.0",
+    "canvas-confetti": "^1.9.4",
     "lucide-react": "^0.510.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

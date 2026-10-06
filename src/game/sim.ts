@@ -1,6 +1,6 @@
 import { createLevel } from "@/game/levels";
 import { PH, PW } from "@/game/types";
-import type { Flyer, Input, Level, Particle, ParticleShape, Player, PowerKind, Rect, Solid, StepEvents } from "@/game/types";
+import type { BossState, Flyer, Input, Level, Particle, ParticleShape, Player, PowerKind, Rect, Solid, StepEvents } from "@/game/types";
 
 const GRAV_UP = 1120;
 const GRAV_DOWN = 1580;
@@ -50,6 +50,7 @@ type SimState = {
   nextHeart: number;
   won: boolean;
   hurts: number;
+  boss: BossState | null;
 };
 
 export type Sim = SimState;
@@ -71,6 +72,8 @@ function emptyEvents(): StepEvents {
     bump: false,
     secret: false,
     steam: false,
+    bossHit: false,
+    bossDefeated: false,
   };
 }
 
@@ -413,6 +416,7 @@ export function createSim(index: number): SimState {
     nextHeart: 10,
     won: false,
     hurts: 0,
+    boss: level.boss ? JSON.parse(JSON.stringify(level.boss)) : null,
   };
 }
 
@@ -738,8 +742,15 @@ export function step(sim: SimState, input: Input, dt: number): StepEvents {
     events.fall = true;
   }
 
+  // Aggiornamento Boss Arena (es. Re Cuscino nel Salotto)
+  updateBoss(sim, events, dt);
+
   if (!sim.won && sim.finale <= 0 && hit(p.x, p.y, PW, PH, sim.goal, 4)) {
-    if (sim.finaleLevel) {
+    if (sim.boss && !sim.boss.defeated) {
+      // Re Cuscino blocca ancora la porta finché non ride di gusto con il solletico!
+      p.x = sim.goal.x - PW - 4;
+      p.vx = 0;
+    } else if (sim.finaleLevel) {
       sim.finale = 2.4;
       p.vx = 90;
     } else {
@@ -753,6 +764,236 @@ export function step(sim: SimState, input: Input, dt: number): StepEvents {
 
   updateParticles(sim, dt);
   return events;
+}
+
+/** Aggiorna il comportamento interattivo, giocoso e non violento del Boss per bimbi. */
+function updateBoss(sim: SimState, events: StepEvents, dt: number) {
+  const boss = sim.boss;
+  if (!boss) return;
+  const p = sim.player;
+
+  // 1. Attivazione automatica quando Orso varca l'ingresso dell'arena (x >= 4000)
+  if (!boss.active) {
+    if (p.x >= 4000) {
+      boss.active = true;
+      boss.introT = 2.4;
+      boss.speech = "HIHIHI! SE VUOI PASSARE DEVI FARMI IL SOLLETICO!";
+      boss.speechT = 3.5;
+      sim.shake = 8;
+      puff(sim, boss.x + boss.w / 2, boss.y + boss.h / 2, "#f472b6", 18, 160, "star");
+    }
+    return;
+  }
+
+  // 2. Barriera soffice dell'arena: non si esce a sinistra, e non si oltrepassa Re Cuscino finché non ride di cuore
+  if (p.x < 3990) {
+    p.x = 3990;
+    if (p.vx < 0) p.vx = 0;
+  }
+  if (!boss.defeated && p.x + PW > boss.x + 40) {
+    p.x = boss.x + 40 - PW;
+    if (p.vx > 0) p.vx = 0;
+  }
+
+  boss.t += dt;
+  boss.introT = Math.max(0, boss.introT - dt);
+  boss.squish = Math.max(0, boss.squish - dt * 2.2);
+  boss.giggleT = Math.max(0, boss.giggleT - dt);
+  boss.speechT = Math.max(0, boss.speechT - dt);
+
+  // Se sconfitto: risata di gioia, Re Cuscino indietreggia e apre la strada
+  if (boss.defeated) {
+    boss.defeatedT += dt;
+    if (boss.x < 4780) {
+      boss.x += dt * 45;
+    }
+    return;
+  }
+
+  // 3. Lancio di cuscini o bolle giocose a intervalli regolari
+  boss.attackTimer += dt;
+  const attackInterval = boss.hp === 3 ? 3.8 : boss.hp === 2 ? 3.2 : 2.6;
+  if (boss.attackTimer >= attackInterval && boss.introT <= 0) {
+    boss.attackTimer = 0;
+    const projId = Math.random();
+
+    if (boss.hp === 3) {
+      // Fase 1: Cuscino rotolante morbido rosa
+      boss.projectiles.push({
+        id: projId,
+        kind: "cushion",
+        x: boss.x - 30,
+        y: sim.groundY - 32,
+        vx: -130,
+        vy: -60,
+        r: 26,
+        color: "#f472b6",
+        name: "Cuscino Rosa",
+        popped: false,
+        t: 0,
+      });
+      boss.speech = "ATTENTA AL CUSCINO! SALTA!";
+      boss.speechT = 2.0;
+    } else if (boss.hp === 2) {
+      // Fase 2: Bolle di sapone pastello (Gialla e Celeste)
+      boss.projectiles.push({
+        id: projId,
+        kind: "bubble",
+        x: boss.x - 30,
+        y: 320,
+        vx: -85,
+        vy: -25,
+        r: 28,
+        color: "#facc15",
+        name: "Bolla Gialla",
+        popped: false,
+        t: 0,
+      });
+      boss.projectiles.push({
+        id: projId + 1,
+        kind: "bubble",
+        x: boss.x - 70,
+        y: 220,
+        vx: -65,
+        vy: 20,
+        r: 26,
+        color: "#38bdf8",
+        name: "Bolla Celeste",
+        popped: false,
+        t: 0.5,
+      });
+      boss.speech = "SCOPPIA LE BOLLE COLORATE!";
+      boss.speechT = 2.2;
+    } else {
+      // Fase 3: Cuore volante
+      boss.projectiles.push({
+        id: projId,
+        kind: "bubble",
+        x: boss.x - 40,
+        y: 260,
+        vx: -95,
+        vy: -35,
+        r: 32,
+        color: "#ec4899",
+        name: "Cuoricino",
+        popped: false,
+        t: 0,
+      });
+      boss.speech = "SALTO GIGANTE! FAMMI IL SOLLETICO!";
+      boss.speechT = 2.2;
+    }
+  }
+
+  // 4. Simulazione dei proiettili morbidi
+  for (let i = boss.projectiles.length - 1; i >= 0; i--) {
+    const proj = boss.projectiles[i]!;
+    proj.t += dt;
+    proj.x += proj.vx * dt;
+    if (proj.kind === "cushion") {
+      proj.vy += 450 * dt;
+      proj.y += proj.vy * dt;
+      if (proj.y > sim.groundY - proj.r) {
+        proj.y = sim.groundY - proj.r;
+        proj.vy = -180;
+      }
+    } else {
+      proj.y += Math.sin(proj.t * 3.5) * 45 * dt + proj.vy * dt * 0.2;
+    }
+
+    if (proj.x < 3960 || proj.t > 9) {
+      boss.projectiles.splice(i, 1);
+      continue;
+    }
+
+    const distToPlayer = Math.hypot(p.x + PW / 2 - proj.x, p.y + PH / 2 - proj.y);
+    if (distToPlayer < proj.r + 26) {
+      const fromAbove = p.vy > 0 && p.y + PH < proj.y + 14;
+      if (fromAbove || p.glide > 0 || p.powder > 0) {
+        proj.popped = true;
+        p.vy = -540;
+        events.bounce = true;
+        grantStar(sim, events);
+        puff(sim, proj.x, proj.y, proj.color, 12, 120, proj.kind === "cushion" ? "star" : "bubble");
+        boss.projectiles.splice(i, 1);
+        continue;
+      } else {
+        p.vx = -80;
+        p.happy = 0.3;
+        events.bump = true;
+        puff(sim, proj.x, proj.y, "#ffffff", 6, 60, "bubble");
+        boss.projectiles.splice(i, 1);
+        continue;
+      }
+    }
+  }
+
+  // 5. Rilevamento colpo di solletico su Re Cuscino
+  if (boss.defeated) return;
+  const bossHitBox = { x: boss.x + 20, y: boss.y + 20, w: boss.w - 40, h: boss.h - 30 };
+  const touchingBoss = hit(p.x, p.y, PW, PH, bossHitBox, 6);
+
+  if (touchingBoss) {
+    if (boss.giggleT <= 0) {
+      // Qualsiasi contatto con il morbidissimo Re Cuscino gli fa il solletico!
+      boss.hp -= 1;
+      boss.squish = 0.65;
+      boss.giggleT = 1.8;
+      events.bossHit = true;
+      p.vy = -560;
+      p.vx = -90;
+      p.grounded = false;
+      p.happy = 1.5;
+      sim.shake = 6;
+
+      puff(sim, boss.x + boss.w / 2, boss.y + 50, "#facc15", 22, 200, "star", 1.4);
+      puff(sim, boss.x + boss.w / 2, boss.y + 80, "#e0e7ff", 16, 160, "bubble", 1.2);
+      grantStar(sim, events);
+
+      if (boss.hp === 2) {
+        boss.speech = "HIHIHI! CHE SOLLETICO AL PANCINO!";
+        boss.speechT = 2.5;
+      } else if (boss.hp === 1) {
+        boss.speech = "AHAHAH! MI FA TROPPO RIDERE! ANCORA!";
+        boss.speechT = 2.5;
+      } else {
+        boss.defeated = true;
+        boss.defeatedT = 0.1;
+        events.bossDefeated = true;
+        boss.speech = "AHAHAH! BASTA SOLLETICO! IL BAGNO È APERTO!";
+        boss.speechT = 4.0;
+        puff(sim, boss.x + boss.w / 2, boss.y + 40, "#ec4899", 25, 240, "heart", 1.5);
+      }
+    } else {
+      p.vx = -80;
+      p.vy = Math.min(p.vy, -220);
+      events.bounce = true;
+      puff(sim, p.x + PW, p.y + PH / 2, "#e0e7ff", 6, 80, "bubble");
+    }
+  }
+}
+
+/** Tocco diretto/assistivo su Re Cuscino per facilitare bimbe piccole da touchscreen. */
+export function tickleBoss(sim: SimState): boolean {
+  if (!sim.boss || !sim.boss.active || sim.boss.defeated || sim.boss.giggleT > 0) return false;
+  sim.boss.hp -= 1;
+  sim.boss.squish = 0.65;
+  sim.boss.giggleT = 1.8;
+  puff(sim, sim.boss.x + sim.boss.w / 2, sim.boss.y + 50, "#facc15", 22, 200, "star", 1.4);
+  puff(sim, sim.boss.x + sim.boss.w / 2, sim.boss.y + 80, "#e0e7ff", 16, 160, "bubble", 1.2);
+  grantStar(sim, { coins: 0, combo: 0, jump: false, stomp: false, bounce: false, bump: false, secret: false, heal: false, hurt: false, checkpoint: false, power: null, win: false, fall: false, nap: false, steam: false, bossHit: true, bossDefeated: sim.boss.hp <= 0 });
+  if (sim.boss.hp === 2) {
+    sim.boss.speech = "HIHIHI! CHE SOLLETICO AL PANCINO!";
+    sim.boss.speechT = 2.5;
+  } else if (sim.boss.hp === 1) {
+    sim.boss.speech = "AHAHAH! MI FA TROPPO RIDERE! ANCORA!";
+    sim.boss.speechT = 2.5;
+  } else {
+    sim.boss.defeated = true;
+    sim.boss.defeatedT = 0.1;
+    sim.boss.speech = "AHAHAH! BASTA SOLLETICO! IL BAGNO È APERTO!";
+    sim.boss.speechT = 4.0;
+  }
+  return true;
 }
 
 export function coinTotal(sim: SimState) {

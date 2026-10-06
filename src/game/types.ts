@@ -107,6 +107,43 @@ export type Flyer = { x: number; y: number; t: number };
 export type Slip = { x: number; w: number };
 export type Steam = { x: number; y: number; phase: number };
 
+export interface BossProjectile {
+  id: number;
+  kind: "cushion" | "bubble";
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  r: number;
+  color: string;
+  name: string;
+  popped: boolean;
+  t: number;
+}
+
+export interface BossState {
+  type: "king_pillow";
+  name: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  maxHp: number;
+  hp: number;
+  phase: number;
+  active: boolean;
+  introT: number;
+  squish: number;
+  giggleT: number;
+  defeated: boolean;
+  defeatedT: number;
+  speech: string;
+  speechT: number;
+  projectiles: BossProjectile[];
+  attackTimer: number;
+  t: number;
+}
+
 export type Level = {
   index: number;
   name: string;
@@ -130,6 +167,7 @@ export type Level = {
   steams: Steam[];
   gusts: Gust[];
   finale: boolean;
+  boss?: BossState | null;
 };
 
 export type StepEvents = {
@@ -148,6 +186,8 @@ export type StepEvents = {
   bump: boolean;
   secret: boolean;
   steam: boolean;
+  bossHit?: boolean;
+  bossDefeated?: boolean;
 };
 
 export type Input = {

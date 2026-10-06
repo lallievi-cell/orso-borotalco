@@ -1,6 +1,6 @@
 import type { Art } from "@/game/assets";
 import type { Sim } from "@/game/sim";
-import type { Enemy, Solid, Theme } from "@/game/types";
+import type { BossState, Enemy, Solid, Theme } from "@/game/types";
 import { PH, PW, VIEW_H, VIEW_W } from "@/game/types";
 import { drawHat } from "@/game/hub/cosmetics";
 
@@ -1218,6 +1218,311 @@ function drawCritter(ctx: CanvasRenderingContext2D, e: Enemy, t: number) {
   ctx.restore();
 }
 
+function drawBoss(ctx: CanvasRenderingContext2D, sim: Sim, art: Art) {
+  const boss = sim.boss;
+  if (!boss) return;
+
+  // 1. Dais / Shadow
+  const shadowY = sim.groundY - 6;
+  const shadowAlpha = boss.defeated ? 0.12 : 0.28;
+  ctx.save();
+  ctx.fillStyle = `rgba(90, 56, 40, ${shadowAlpha})`;
+  ctx.beginPath();
+  ctx.ellipse(boss.x + boss.w / 2, shadowY, 82, 14, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // 2. Projectiles (pink cushions & colorful floating bubbles)
+  for (const proj of boss.projectiles) {
+    if (proj.popped) continue;
+    ctx.save();
+    if (proj.kind === "cushion") {
+      // Soft rolling cushion
+      ctx.translate(proj.x, proj.y);
+      ctx.rotate(proj.t * 4);
+      // Pillow body
+      ctx.fillStyle = "#f472b6";
+      roundRect(ctx, -proj.r, -proj.r * 0.75, proj.r * 2, proj.r * 1.5, 8);
+      ctx.fill();
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = "#ffffff";
+      ctx.stroke();
+      // Heart on cushion
+      ctx.fillStyle = "#ffffff";
+      drawHeartShape(ctx, 0, 0, proj.r * 0.4);
+      // Corner tassels
+      ctx.fillStyle = "#fb7185";
+      for (const [cx, cy] of [
+        [-proj.r, -proj.r * 0.75],
+        [proj.r, -proj.r * 0.75],
+        [-proj.r, proj.r * 0.75],
+        [proj.r, proj.r * 0.75],
+      ]) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else {
+      // Floating educational bubble
+      const bob = Math.sin(sim.t * 4 + proj.t) * 3;
+      ctx.translate(proj.x, proj.y + bob);
+      // Soft glow
+      ctx.fillStyle = proj.color;
+      ctx.globalAlpha = 0.55;
+      ctx.beginPath();
+      ctx.arc(0, 0, proj.r + 2, 0, Math.PI * 2);
+      ctx.fill();
+      // Bubble outline & shine
+      ctx.globalAlpha = 0.9;
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, proj.r, 0, Math.PI * 2);
+      ctx.stroke();
+      // Specular highlight
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(-proj.r * 0.35, -proj.r * 0.35, proj.r * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      // Star in center
+      ctx.fillStyle = proj.color === "#facc15" ? "#ea580c" : "#0284c7";
+      drawStar5(ctx, 0, 0, proj.r * 0.45);
+    }
+    ctx.restore();
+  }
+
+  // 3. Re Cuscino Character
+  ctx.save();
+  const cx = boss.x + boss.w / 2;
+  const cy = boss.y + boss.h / 2;
+
+  // Squish and giggle wobble
+  let wobbleX = 0;
+  let wobbleY = 0;
+  let scaleX = 1 + boss.squish * 0.35;
+  let scaleY = 1 - boss.squish * 0.35;
+
+  if (boss.giggleT > 0) {
+    wobbleX = Math.sin(sim.t * 40) * 5;
+    wobbleY = Math.cos(sim.t * 32) * 3;
+    scaleX += Math.sin(sim.t * 20) * 0.08;
+    scaleY += Math.cos(sim.t * 20) * 0.08;
+  } else if (!boss.defeated) {
+    // Idle breathing
+    scaleY += Math.sin(sim.t * 2.8) * 0.04;
+    scaleX -= Math.sin(sim.t * 2.8) * 0.03;
+  }
+
+  if (boss.defeated) {
+    // Sliding comfortably to the right bowing happily
+    const slideOffset = Math.min(60, boss.defeatedT * 80);
+    ctx.translate(cx + wobbleX + slideOffset, cy + wobbleY + 15);
+    ctx.rotate(0.08);
+  } else {
+    ctx.translate(cx + wobbleX, cy + wobbleY);
+  }
+
+  ctx.scale(scaleX, scaleY);
+
+  const img =
+    (boss.giggleT > 0 || boss.defeated) && art.boss?.kingPillowLaugh
+      ? art.boss.kingPillowLaugh
+      : art.boss?.kingPillow;
+  const drawW = 190;
+  const drawH = 190;
+
+  if (img && img.complete && img.naturalWidth > 0) {
+    ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+  } else {
+    // Vector fallback: Puffy royal cushion with golden crown
+    ctx.fillStyle = "#818cf8";
+    roundRect(ctx, -75, -70, 150, 140, 36);
+    ctx.fill();
+    ctx.strokeStyle = "#fef08a";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // Crown on top
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath();
+    ctx.moveTo(-35, -70);
+    ctx.lineTo(-45, -100);
+    ctx.lineTo(-18, -85);
+    ctx.lineTo(0, -105);
+    ctx.lineTo(18, -85);
+    ctx.lineTo(45, -100);
+    ctx.lineTo(35, -70);
+    ctx.closePath();
+    ctx.fill();
+
+    // Cute face
+    ctx.fillStyle = "#1e1b4b";
+    if (boss.giggleT > 0 || boss.defeated) {
+      // Laughing squint eyes
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = "#1e1b4b";
+      ctx.beginPath();
+      ctx.arc(-26, -10, 10, Math.PI, 0);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(26, -10, 10, Math.PI, 0);
+      ctx.stroke();
+      // Big open mouth
+      ctx.fillStyle = "#f43f5e";
+      ctx.beginPath();
+      ctx.arc(0, 15, 20, 0, Math.PI);
+      ctx.fill();
+    } else {
+      // Big friendly cartoon eyes
+      ctx.beginPath();
+      ctx.arc(-26, -10, 8, 0, Math.PI * 2);
+      ctx.arc(26, -10, 8, 0, Math.PI * 2);
+      ctx.fill();
+      // Smiling mouth
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "#1e1b4b";
+      ctx.beginPath();
+      ctx.arc(0, 8, 16, 0.2, Math.PI - 0.2);
+      ctx.stroke();
+    }
+  }
+
+  // Floating giggle sparkles & musical notes when tickled
+  if (boss.giggleT > 0) {
+    const sparkles = ["✨", "🎵", "⭐", "❤️", "🎶"];
+    ctx.font = '22px "Nunito","Fredoka One",sans-serif';
+    ctx.textAlign = "center";
+    for (let i = 0; i < 4; i++) {
+      const sx = Math.sin(sim.t * 4 + i * 1.6) * 75;
+      const sy = -80 - ((sim.t * 35 + i * 22) % 60);
+      ctx.fillText(sparkles[(i + Math.floor(sim.t * 2)) % sparkles.length]!, sx, sy);
+    }
+  }
+
+  ctx.restore();
+
+  // 4. Speech Bubble
+  if (boss.speechT > 0 && boss.speech) {
+    ctx.save();
+    const bx = boss.x + boss.w / 2;
+    const by = boss.y - 45;
+    ctx.font = '800 15px "Nunito","Fredoka One",sans-serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const textW = ctx.measureText(boss.speech).width;
+    const bubbleW = Math.max(160, textW + 36);
+    const bubbleH = 42;
+
+    // Cloud / Rounded Bubble
+    ctx.fillStyle = "#ffffff";
+    ctx.shadowColor = "rgba(79, 70, 229, 0.22)";
+    ctx.shadowBlur = 10;
+    roundRect(ctx, bx - bubbleW / 2, by - bubbleH / 2, bubbleW, bubbleH, 20);
+    ctx.fill();
+
+    // Bubble Tail pointing to boss
+    ctx.beginPath();
+    ctx.moveTo(bx - 10, by + bubbleH / 2 - 2);
+    ctx.lineTo(bx, by + bubbleH / 2 + 12);
+    ctx.lineTo(bx + 10, by + bubbleH / 2 - 2);
+    ctx.fill();
+
+    // Border
+    ctx.shadowBlur = 0;
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = "#818cf8";
+    roundRect(ctx, bx - bubbleW / 2, by - bubbleH / 2, bubbleW, bubbleH, 20);
+    ctx.stroke();
+
+    // Text
+    ctx.fillStyle = "#312e81";
+    ctx.fillText(boss.speech, bx, by + 1);
+    ctx.restore();
+  }
+
+  // 5. Visual "Solletico! 🪶" indicator above boss for Celeste
+  if (boss.active && !boss.defeated && boss.giggleT <= 0) {
+    ctx.save();
+    const bob = Math.sin(sim.t * 4) * 5;
+    const bx = boss.x + boss.w / 2;
+    const by = boss.y - 28 + bob;
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+    roundRect(ctx, bx - 70, by - 15, 140, 30, 15);
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#f59e0b";
+    ctx.stroke();
+
+    ctx.font = '800 13px "Nunito","Fredoka One",sans-serif';
+    ctx.fillStyle = "#b45309";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🪶 SOLLETICO! 🪶", bx, by);
+    ctx.restore();
+  }
+}
+
+function drawBossHud(ctx: CanvasRenderingContext2D, boss: BossState) {
+  if (!boss || !boss.active) return;
+
+  ctx.save();
+  const hudW = 340;
+  const hudH = 68;
+  const hudX = VIEW_W / 2 - hudW / 2;
+  const hudY = 16;
+
+  // Background plaque
+  ctx.fillStyle = "rgba(255, 252, 245, 0.96)";
+  ctx.shadowColor = "rgba(120, 53, 15, 0.2)";
+  ctx.shadowBlur = 14;
+  roundRect(ctx, hudX, hudY, hudW, hudH, 24);
+  ctx.fill();
+
+  ctx.shadowBlur = 0;
+  ctx.lineWidth = 3.5;
+  ctx.strokeStyle = "#f59e0b";
+  roundRect(ctx, hudX, hudY, hudW, hudH, 24);
+  ctx.stroke();
+
+  // Boss Title
+  ctx.font = '900 15px "Nunito","Fredoka One",sans-serif';
+  ctx.fillStyle = "#78350f";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText("👑 RE CUSCINO 👑", VIEW_W / 2, hudY + 8);
+
+  // 3 Laughter Hearts / Stars
+  const iconSpacing = 42;
+  const startX = VIEW_W / 2 - ((boss.maxHp - 1) * iconSpacing) / 2;
+  const iconY = hudY + 42;
+
+  for (let i = 0; i < boss.maxHp; i++) {
+    const ix = startX + i * iconSpacing;
+    const isTickled = i >= boss.hp;
+    if (isTickled) {
+      // Golden laugh star with sparkle
+      ctx.fillStyle = "#facc15";
+      drawStar5(ctx, ix, iconY, 15);
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(ix - 3, iconY - 4, 3, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Big pink laughter heart with pulse
+      const pulse = Math.sin(boss.t * 3 + i) * 1.5;
+      ctx.fillStyle = "#f43f5e";
+      drawHeartShape(ctx, ix, iconY + 1, 14 + pulse);
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.beginPath();
+      ctx.arc(ix - 4, iconY - 3, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.restore();
+}
+
 export function renderWorld(
   ctx: CanvasRenderingContext2D,
   sim: Sim,
@@ -1603,6 +1908,7 @@ export function renderWorld(
     }
     ctx.restore();
   }
+  drawBoss(ctx, sim, art);
   ctx.globalAlpha = 1;
   ctx.restore();
 
@@ -1629,6 +1935,10 @@ export function renderWorld(
     ctx.fill();
   }
   ctx.restore();
+
+  if (sim.boss) {
+    drawBossHud(ctx, sim.boss);
+  }
 }
 
 export function renderTitle(ctx: CanvasRenderingContext2D, art: Art, t: number) {

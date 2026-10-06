@@ -148,13 +148,19 @@ export function createLevel(index: number): Level {
 /* ------------------------------------------------------------------ */
 
 function salotto(): Level {
-  const w = 4500;
+  const w = 5200;
   const c1 = plat("pillow", 1000, 400, 210);
   const c2 = plat("pillow", 1290, 320, 210);
   const c3 = plat("bench", 1590, 390, 200);
   const tramp = spring(2330, 414, 180);
   const sky = plat("pillow", 2520, 190, 260);
   const shelf = plat("bench", 3330, 370, 230);
+
+  // Arena del Boss Re Cuscino (x: 4000 .. 5100)
+  const bossCushion = plat("pillow", 4140, 320, 190);
+  const bossTramp = spring(4340, 414, 200);
+  const bossDais = plat("bench", 4620, GROUND - 32, 220);
+
   return {
     index: 0,
     name: "Il salotto",
@@ -166,7 +172,21 @@ function salotto(): Level {
     w,
     h: H,
     groundY: GROUND,
-    solids: [ground(w), blocks(720), c1, c2, c3, tramp, sky, blocks(2980, 64, 96), shelf, blocks(3900, 52, 84)],
+    solids: [
+      ground(w),
+      blocks(720),
+      c1,
+      c2,
+      c3,
+      tramp,
+      sky,
+      blocks(2980, 64, 96),
+      shelf,
+      blocks(3900, 52, 84),
+      bossCushion,
+      bossTramp,
+      bossDais,
+    ],
     coins: [
       ...row(250, GROUND - 70, 5),
       ...arc(640, GROUND - 80, 880, GROUND - 80, 4, 110),
@@ -178,18 +198,41 @@ function salotto(): Level {
       ...arc(2900, GROUND - 80, 3150, GROUND - 80, 4, 120),
       ...on(shelf, 4),
       ...arc(3830, GROUND - 80, 4060, GROUND - 80, 4, 100),
+      ...arc(4260, 380, 4420, 180, 4, 40),
       ...row(4120, GROUND - 70, 2),
     ],
     enemies: [foe("sponge", 1880, 2140, 30), foe("roll", 3500, 3800, 46)],
     powers: [power("powder", c2.x + 84, c2.y - 62), power("heart", shelf.x + 94, shelf.y - 110)],
-    checkpoints: [{ x: 2220, floor: GROUND, got: false }],
+    checkpoints: [{ x: 2220, floor: GROUND, got: false }, { x: 3960, floor: GROUND, got: false }],
     secret: secret(sky.x + sky.w - 60, sky.y - 120),
-    goal: door(4260),
+    goal: door(4960),
     spawnX: 80,
     slips: [],
     steams: [],
     gusts: [],
     finale: false,
+    boss: {
+      type: "king_pillow",
+      name: "RE CUSCINO",
+      x: 4640,
+      y: GROUND - 170,
+      w: 170,
+      h: 170,
+      maxHp: 3,
+      hp: 3,
+      phase: 1,
+      active: false,
+      introT: 0,
+      squish: 0,
+      giggleT: 0,
+      defeated: false,
+      defeatedT: 0,
+      speech: "HIHIHI! SE VUOI PASSARE DEVI FARMI IL SOLLETICO!",
+      speechT: 0,
+      projectiles: [],
+      attackTimer: 0,
+      t: 0,
+    },
   };
 }
 

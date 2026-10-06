@@ -233,6 +233,16 @@ export function createAudio() {
       tone(320, 0.12, "sine", 0.07, t, 680);
       tone(680, 0.14, "triangle", 0.04, t + 0.06, 520);
     },
+    giggle() {
+      // Risatina contagiosa di Re Cuscino tipo cartone animato
+      haptic([15, 20, 15, 20]);
+      const ac = ensure();
+      const t = ac?.currentTime ?? 0;
+      tone(523, 0.08, "sine", 0.05, t, 600);
+      tone(659, 0.08, "sine", 0.05, t + 0.07, 740);
+      tone(784, 0.1, "sine", 0.06, t + 0.14, 880);
+      tone(1046, 0.14, "sine", 0.05, t + 0.22, 1100);
+    },
     bump() {
       // Piccolo tocco buffo se un nemico tocca l'orso fermo
       haptic(30);

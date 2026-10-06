@@ -1,9 +1,10 @@
 import { House, Pause, Play, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import React, { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import confetti from "canvas-confetti";
 import { asset, loadArt, type Art } from "@/game/assets";
 import { createAudio, type AudioBus } from "@/game/audio";
 import { renderTitle, renderWorld } from "@/game/draw";
-import { coinTotal, coinsLeft, createSim, step, type Sim } from "@/game/sim";
+import { coinTotal, coinsLeft, createSim, step, tickleBoss, type Sim } from "@/game/sim";
 import { emptySave, loadSave, writeSave, type SaveData } from "@/game/save";
 import { PH, PW, VIEW_H, VIEW_W, type Input } from "@/game/types";
 import { cheer, PLAYER_NAME } from "@/game/player";
@@ -484,6 +485,20 @@ export function OrsoGame() {
           if (ev.hurt) audio.hurt();
           if (ev.checkpoint) audio.checkpoint();
           if (ev.power) audio.power();
+          if (ev.bossHit) {
+            audio.giggle();
+            if (sim.boss?.speech) audio.speak(sim.boss.speech);
+          }
+          if (ev.bossDefeated) {
+            audio.win();
+            if (sim.boss?.speech) audio.speak(sim.boss.speech);
+            confetti({
+              particleCount: 140,
+              spread: 85,
+              origin: { y: 0.55 },
+              colors: ["#f472b6", "#facc15", "#38bdf8", "#a78bfa", "#4ade80"],
+            });
+          }
           if (ev.win) {
             b.mode = "win";
             setMode("win");
@@ -515,8 +530,11 @@ export function OrsoGame() {
           n += 1;
         }
         const look = clamp(sim.player.vx * 0.28, -140, 140);
-        const tx = clamp(sim.player.x + PW / 2 - VIEW_W / 2 + look, 0, Math.max(0, sim.w - VIEW_W));
+        let tx = clamp(sim.player.x + PW / 2 - VIEW_W / 2 + look, 0, Math.max(0, sim.w - VIEW_W));
         const ty = clamp(sim.player.y + PH / 2 - VIEW_H * 0.58, 0, Math.max(0, sim.h - VIEW_H));
+        if (sim.boss && sim.boss.active && !sim.boss.defeated) {
+          tx = clamp(tx, 3960, Math.max(0, sim.w - VIEW_W));
+        }
         const follow = 1 - Math.exp(-8 * dt);
         b.cam.x += (tx - b.cam.x) * follow;
         b.cam.y += (ty - b.cam.y) * follow;
@@ -678,9 +696,58 @@ export function OrsoGame() {
     }
   }
 
+  function checkBossTap(clientX: number, clientY: number): boolean {
+    const sim = bag.current.sim;
+    const boss = sim?.boss;
+    if (!boss || !boss.active || boss.defeated) return false;
+    const canvas = canvasRef.current;
+    if (!canvas) return false;
+
+    const rect = canvas.getBoundingClientRect();
+    const scale = Math.min(canvas.width / VIEW_W, canvas.height / VIEW_H);
+    const wide = canvas.width / canvas.height > VIEW_W / VIEW_H;
+    const ox = (canvas.width - VIEW_W * scale) / 2;
+    const oy = wide ? (canvas.height - VIEW_H * scale) / 2 : (canvas.height - VIEW_H * scale) * 0.12;
+
+    const canvasX = (clientX - rect.left) * (canvas.width / rect.width);
+    const canvasY = (clientY - rect.top) * (canvas.height / rect.height);
+
+    const sx = (canvasX - ox) / scale;
+    const sy = (canvasY - oy) / scale;
+
+    const wx = sx + bag.current.cam.x;
+    const wy = sy + bag.current.cam.y;
+
+    if (
+      wx >= boss.x - 40 &&
+      wx <= boss.x + boss.w + 40 &&
+      wy >= boss.y - 40 &&
+      wy <= boss.y + boss.h + 40
+    ) {
+      if (tickleBoss(sim)) {
+        bag.current.audio?.giggle();
+        if (boss.speech) bag.current.audio?.speak(boss.speech);
+        if (boss.defeated) {
+          bag.current.audio?.win();
+          confetti({
+            particleCount: 140,
+            spread: 85,
+            origin: { y: 0.55 },
+            colors: ["#f472b6", "#facc15", "#38bdf8", "#a78bfa", "#4ade80"],
+          });
+        }
+      }
+      return true;
+    }
+    return false;
+  }
+
   function onCanvasPointerDown(e: ReactPointerEvent<HTMLCanvasElement>) {
     bag.current.audio?.unlock();
     if (bag.current.modalOpen) return;
+    if (bag.current.mode === "play" && checkBossTap(e.clientX, e.clientY)) {
+      return;
+    }
     if (bag.current.mode !== "hub" || !bag.current.hub) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -853,6 +920,9 @@ export function OrsoGame() {
   function jumpDown(e: React.PointerEvent<HTMLDivElement>) {
     if ((e.target as HTMLElement).closest("[data-move]")) return;
     e.preventDefault();
+    if (bag.current.mode === "play" && checkBossTap(e.clientX, e.clientY)) {
+      return;
+    }
     bag.current.jumps.add(e.pointerId);
     bag.current.jumpQueue += 1;
     try {
