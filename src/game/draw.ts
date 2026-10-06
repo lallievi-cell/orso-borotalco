@@ -604,10 +604,13 @@ function blit(
   flip: number,
   sx = 1,
   sy = 1,
+  rot = 0,
 ) {
   ctx.save();
   ctx.translate(cx, feet);
-  ctx.scale(flip * sx, sy);
+  ctx.scale(flip, 1);
+  if (rot !== 0) ctx.rotate(rot);
+  ctx.scale(sx, sy);
   ctx.drawImage(img, -size / 2, -size, size, size);
   ctx.restore();
 }
@@ -939,12 +942,22 @@ export function renderWorld(
   }
 
   let sprite = frameAt(art.idle, p.anim, 3.2);
+  let rot = 0;
   if (!p.grounded) {
     sprite = p.vy < -160 ? frameAt(art.jump, 1, 1) : p.vy < 120 ? frameAt(art.jump, 2, 1) : frameAt(art.jump, 3, 1);
   } else if (Math.abs(p.vx) > 20) {
-    const fps = p.speed > 0 ? 9.5 : 6.5;
-    sprite = frameAt(art.run, p.anim, fps);
+    const cadence = p.speed > 0 ? 14 : 10.5;
+    const stepCycle = p.anim * cadence;
+    const stepPhase = Math.sin(stepCycle);
+
+    // Passo alternato: alterna la falcata distesa (art.run) e l'appoggio al suolo a zampe unite (art.idle)
+    if (Math.abs(stepPhase) < 0.28) {
+      sprite = art.idle[0] ?? art.run[0];
+    } else {
+      sprite = art.run[0] ?? art.idle[0];
+    }
   }
+
   if (!inside && sprite) {
     let sx = 1;
     let sy = 1;
@@ -962,23 +975,38 @@ export function renderWorld(
         const factor = Math.min(0.22, -p.vy / 2600);
         sy = 1 + factor;
         sx = 1 - factor * 0.6;
+        rot = p.vx > 0 ? 0.05 : p.vx < 0 ? -0.05 : 0;
       } else if (p.vy > 200) {
         // Discesa veloce: allungamento dolce verso il basso
         const factor = Math.min(0.15, p.vy / 3200);
         sy = 1 + factor;
         sx = 1 - factor * 0.5;
       }
-    } else if (Math.abs(p.vx) > 30) {
-      // Corsa: respiro elastico a ritmo di passo
-      const bob = Math.sin(p.anim * 14) * 0.05;
-      sy = 1 + bob;
-      sx = 1 - bob * 0.5;
+    } else if (Math.abs(p.vx) > 20) {
+      // Corsa: ritmo vivo con oscillazione d'anca (waddle), rimbalzo del passo e inclinazione
+      const cadence = p.speed > 0 ? 14 : 10.5;
+      const stepCycle = p.anim * cadence;
+      const stepPhase = Math.sin(stepCycle);
+
+      // Oscillazione destra/sinistra alternata a ogni falcata
+      const waddle = stepPhase * 0.09;
+      // Inclinazione in avanti del corpo proporzionale alla velocità di corsa
+      const lean = Math.min(0.08, Math.abs(p.vx) / 1600);
+      rot = lean + waddle;
+
+      // Sollevamento e caduta ritmica del corpo durante il passo
+      offsetY = -Math.abs(stepPhase) * 4.2;
+
+      // Elasticità della pancetta a ogni battuta di zampa
+      const bounce = Math.cos(stepCycle * 2) * 0.06;
+      sy = 1 - bounce;
+      sx = 1 + bounce * 0.7;
     }
 
     const blink = p.invuln > 0 && Math.floor(p.invuln * 10) % 2 === 0;
     ctx.save();
     ctx.globalAlpha = blink ? 0.45 : 1;
-    blit(ctx, sprite, p.x + PW / 2, p.y + PH + 10 + offsetY, 156, p.facing, sx, sy);
+    blit(ctx, sprite, p.x + PW / 2, p.y + PH + 10 + offsetY, 156, p.facing, sx, sy, rot);
     ctx.restore();
   }
 
