@@ -315,6 +315,29 @@ export function OrsoGame() {
         if (hubEv.ballNpcPass) {
           audio.speak(hubEv.ballNpcPass.line);
         }
+        if (hubEv.hoopScore) {
+          audio.swish();
+          audio.power();
+          audio.speak("Canestro! Che bel tiro, campionessa!");
+        }
+        if (hubEv.starPop) {
+          audio.secret();
+        }
+        if (hubEv.treeShake) {
+          audio.rustle();
+        }
+        if (hubEv.musicNote) {
+          audio.note(hubEv.musicNote.freq);
+        }
+        if (hubEv.starReward && hubEv.starReward > 0) {
+          const next = {
+            ...b.save,
+            starsWallet: (b.save.starsWallet ?? 0) + hubEv.starReward,
+          };
+          b.save = next;
+          writeSave(next);
+          setSave(next);
+        }
 
         if (interact) {
           const res = interactHub(b.hub, audio);
@@ -331,10 +354,14 @@ export function OrsoGame() {
         const portal = b.hub.activePortal;
         const shop = b.hub.nearShop;
         const npc = b.hub.activeNpc;
+        const fountain = b.hub.nearFountain;
+        const telescope = b.hub.nearTelescope;
         let key = "";
         if (portal) key = `p:${portal.index}:${portal.locked}`;
         else if (shop) key = "shop";
         else if (npc) key = `n:${npc.id}`;
+        else if (fountain) key = "fountain";
+        else if (telescope) key = "telescope";
 
         if (key !== b.lastHubActionKey) {
           b.lastHubActionKey = key;
@@ -357,6 +384,20 @@ export function OrsoGame() {
               type: "npc",
               label: `PARLA CON ${npc.name}`,
               icon: "💬",
+              locked: false,
+            });
+          } else if (fountain) {
+            setHubAction({
+              type: "npc",
+              label: "ESPRIMI UN DESIDERIO ALLA PAPERELLA",
+              icon: "✨",
+              locked: false,
+            });
+          } else if (telescope) {
+            setHubAction({
+              type: "npc",
+              label: "GUARDA DAL CANNOCCHIALE",
+              icon: "🔭",
               locked: false,
             });
           } else {
@@ -669,10 +710,34 @@ export function OrsoGame() {
       }
     }
 
+    // Se c'è un tocco diretto sulla Fontana dei Desideri (11.5, 11.5)
+    const fountainScreen = worldToScreen(11.5, 11.5, 0, camX, camY);
+    if (Math.hypot(sx - fountainScreen.sx, sy - (fountainScreen.sy - 35)) < 65) {
+      if (Math.hypot(hub.player.wx - 11.5, hub.player.wy - 11.5) <= 2.6) {
+        interactHub(hub, bag.current.audio);
+        return;
+      } else {
+        bag.current.hubTap = { wx: 11.5, wy: 13.0 };
+        return;
+      }
+    }
+
+    // Se c'è un tocco diretto sul Cannocchiale Panoramico (20.5, 5.5)
+    const telScreen = worldToScreen(20.5, 5.5, 0, camX, camY);
+    if (Math.hypot(sx - telScreen.sx, sy - (telScreen.sy - 35)) < 55) {
+      if (Math.hypot(hub.player.wx - 20.5, hub.player.wy - 5.5) <= 2.2) {
+        interactHub(hub, bag.current.audio);
+        return;
+      } else {
+        bag.current.hubTap = { wx: 19.8, wy: 5.8 };
+        return;
+      }
+    }
+
     // Altrimenti: Tap-to-Move! Converte le coordinate schermo nelle coordinate mondo isometriche 2:1
     const { wx, wy } = screenToWorld(sx, sy, camX, camY);
-    const clampedWx = Math.max(2.5, Math.min(21.5, wx));
-    const clampedWy = Math.max(2.5, Math.min(21.5, wy));
+    const clampedWx = Math.max(3.8, Math.min(23.2, wx));
+    const clampedWy = Math.max(3.8, Math.min(23.2, wy));
     bag.current.hubTap = { wx: clampedWx, wy: clampedWy };
   }
 

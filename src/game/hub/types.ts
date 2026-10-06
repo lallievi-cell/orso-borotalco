@@ -59,10 +59,64 @@ export type ToyBall = {
   sparks: BallSpark[];
 };
 
+export type TrampStar = {
+  id: number;
+  wx: number;
+  wy: number;
+  wz: number;
+  collected: boolean;
+  respawnT: number;
+};
+
+export type FallingApple = {
+  wx: number;
+  wy: number;
+  wz: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  alpha: number;
+};
+
+export type AppleTree = {
+  id: number;
+  wx: number;
+  wy: number;
+  apples: number;
+  shakeT: number;
+  fallingApples: FallingApple[];
+};
+
+export type MusicTile = {
+  id: number;
+  wx: number;
+  wy: number;
+  note: string;
+  freq: number;
+  color: string;
+  triggerT: number;
+};
+
+export type FloatingMessage = {
+  id: number;
+  text: string;
+  wx: number;
+  wy: number;
+  wz: number;
+  color: string;
+  t: number;
+};
+
 export type HubToy = {
   ball: ToyBall;
   trampoline: { wx: number; wy: number; radius: number };
-  musicBox: { wx: number; wy: number; playing: boolean; notes: { x: number; y: number; t: number; char: string }[] };
+  hoop: { wx: number; wy: number; radius: number; score: number; swishT: number; lastScoreT: number };
+  trampStars: TrampStar[];
+  appleTrees: AppleTree[];
+  musicTiles: MusicTile[];
+  telescope: { wx: number; wy: number; radius: number; lookT: number };
+  wishingFountain: { wx: number; wy: number; radius: number; wishesCount: number; lastWishT: number; auraT: number };
+  micioPet: { petCount: number; hearts: { wx: number; wy: number; wz: number; vy: number; alpha: number }[] };
 };
 
 export type DialogueState = {
@@ -105,5 +159,8 @@ export type HubState = {
   activePortal: PortalInfo | null;
   activeNpc: NpcInfo | null;
   nearShop: boolean;
+  nearFountain: boolean;
+  nearTelescope: boolean;
+  floatingMessages: FloatingMessage[];
   lastEnteredPortal: number | null;
 };

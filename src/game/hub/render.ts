@@ -98,29 +98,129 @@ export function renderHub(
     draw: (c) => drawBeachBall(c, ball, camX, camY),
   });
 
-  // Alberi di mele e cespugli di rose fiorite illustrati (art.hub.tree, art.hub.bush)
-  const decorTrees = [
-    { wx: 19.5, wy: 18.5, kind: "apple" },
-    { wx: 16.5, wy: 19.5, kind: "bush" },
-    { wx: 20.5, wy: 11.5, kind: "bush" },
-    { wx: 3.5, wy: 19.5, kind: "apple" },
+  // 4 Lampioni vittoriani in ferro battuto con luce accesa e alone caldo a terra
+  const lampposts = [
+    { wx: 9.5, wy: 9.5 },
+    { wx: 13.5, wy: 9.5 },
+    { wx: 9.5, wy: 17.5 },
+    { wx: 17.5, wy: 17.5 },
   ];
-  for (const tree of decorTrees) {
+  for (const lp of lampposts) {
     items.push({
-      depth: getDepth(tree.wx, tree.wy, 0),
-      draw: (c) => drawDecorTree(c, tree.wx, tree.wy, tree.kind, art, camX, camY, hub.t),
+      depth: getDepth(lp.wx, lp.wy, 0),
+      draw: (c) => drawLamppost(c, lp.wx, lp.wy, camX, camY, hub.t),
     });
   }
 
-  // Sezioni di staccionata in legno bianco con fiori rampicanti sul terrazzo (art.hub.fence)
+  // 2 Panchine del parco in legno noce lucido
+  const benches = [
+    { wx: 6.5, wy: 11.5, rot: "SE" as const },
+    { wx: 15.5, wy: 11.5, rot: "SW" as const },
+  ];
+  for (const b of benches) {
+    items.push({
+      depth: getDepth(b.wx, b.wy, 0),
+      draw: (c) => drawParkBench(c, b.wx, b.wy, b.rot, camX, camY),
+    });
+  }
+
+  // Tavolino bistrot con ombrellone a spicchi pastello e servizio da tè
+  items.push({
+    depth: getDepth(6.5, 15.5, 0),
+    draw: (c) => drawBistroTable(c, 6.5, 15.5, camX, camY, hub.t),
+  });
+
+  // Canestro da basket giocattolo con retina animata e score
+  const hoop = hub.toys.hoop;
+  if (hoop) {
+    items.push({
+      depth: getDepth(hoop.wx, hoop.wy, 0),
+      draw: (c) => drawBasketballHoop(c, hoop, camX, camY, hub.t),
+    });
+  }
+
+  // Cannocchiale panoramico in ottone sul terrazzo belvedere
+  const tel = hub.toys.telescope;
+  if (tel) {
+    items.push({
+      depth: getDepth(tel.wx, tel.wy, 0),
+      draw: (c) => drawTelescope(c, tel, camX, camY, hub.t),
+    });
+  }
+
+  // Stelline dorate 3D in volo sopra il trampolino elastico
+  for (const s of hub.toys.trampStars) {
+    if (!s.collected) {
+      items.push({
+        depth: getDepth(s.wx, s.wy, s.wz),
+        draw: (c) => drawAerialStar(c, s, camX, camY, hub.t),
+      });
+    }
+  }
+
+  // Alberi di mele interattivi scuotibili e mele cadenti
+  for (const tree of hub.toys.appleTrees) {
+    items.push({
+      depth: getDepth(tree.wx, tree.wy, 0),
+      draw: (c) => drawInteractiveAppleTree(c, tree, art, camX, camY, hub.t),
+    });
+    for (const apple of tree.fallingApples) {
+      items.push({
+        depth: getDepth(apple.wx, apple.wy, apple.wz),
+        draw: (c) => drawFallingApple(c, apple, camX, camY),
+      });
+    }
+  }
+
+  // Cespugli di rose fiorite nel parco
+  const extraBushes = [
+    { wx: 16.5, wy: 19.5 },
+    { wx: 20.5, wy: 11.5 },
+    { wx: 22.5, wy: 16.5 },
+    { wx: 13.5, wy: 21.5 },
+  ];
+  for (const b of extraBushes) {
+    items.push({
+      depth: getDepth(b.wx, b.wy, 0),
+      draw: (c) => drawDecorTree(c, b.wx, b.wy, "bush", art, camX, camY, hub.t),
+    });
+  }
+
+  // Staccionate in legno bianco sul terrazzo belvedere
   const fences = [
     { wx: 18.5, wy: 7.2 },
     { wx: 18.5, wy: 9.8 },
+    { wx: 22.5, wy: 6.5 },
+    { wx: 22.5, wy: 8.5 },
   ];
   for (const f of fences) {
     items.push({
       depth: getDepth(f.wx, f.wy, 0),
       draw: (c) => drawGardenFence(c, f.wx, f.wy, art, camX, camY),
+    });
+  }
+
+  // Aura magica arcobaleno della Fontana dei Desideri
+  if (hub.toys.wishingFountain.auraT > 0) {
+    items.push({
+      depth: getDepth(11.5, 11.5, 0) + 0.02,
+      draw: (c) => drawWishingAura(c, 11.5, 11.5, hub.toys.wishingFountain.auraT, camX, camY, hub.t),
+    });
+  }
+
+  // Cuoricini svolazzanti delle coccole di Micio
+  for (const heart of hub.toys.micioPet.hearts) {
+    items.push({
+      depth: getDepth(heart.wx, heart.wy, heart.wz),
+      draw: (c) => drawPetHeart(c, heart, camX, camY),
+    });
+  }
+
+  // Messaggi fluttuanti dinamici ("CANESTRO! +2 ⭐", "GNAM! 🍎 +1 ⭐", ecc)
+  for (const msg of hub.floatingMessages) {
+    items.push({
+      depth: getDepth(msg.wx, msg.wy, msg.wz) + 0.8,
+      draw: (c) => drawFloatingMessage(c, msg, camX, camY),
     });
   }
 
@@ -861,11 +961,11 @@ function drawHubWalls(
   const apexX = apexTile.sx;
   const apexY = apexTile.sy;
 
-  const westTile = worldToScreen(3.5, 20.5, 0, camX, camY);
+  const westTile = worldToScreen(3.5, 23.5, 0, camX, camY);
   const westX = westTile.sx;
   const westY = westTile.sy;
 
-  const eastTile = worldToScreen(20.5, 3.5, 0, camX, camY);
+  const eastTile = worldToScreen(23.5, 3.5, 0, camX, camY);
   const eastX = eastTile.sx;
   const eastY = eastTile.sy;
 
@@ -1158,11 +1258,17 @@ function drawHubWalls(
   const pWin2 = worldToScreen(3.5, 16.0, 0, camX, camY);
   drawArchedWallWindow(ctx, pWin2.sx, pWin2.sy - 52, "blue");
 
+  // - Finestra panoramica 3 verso il giardino sud-ovest
+  const pWinExt = worldToScreen(3.5, 21.0, 0, camX, camY);
+  drawArchedWallWindow(ctx, pWinExt.sx, pWinExt.sy - 52, "yellow");
+
   // - Applique luminose dorate lungo la parete NO
   const pSc1 = worldToScreen(3.5, 8.5, 0, camX, camY);
   drawWallSconce(ctx, pSc1.sx + 4, pSc1.sy - 66);
   const pSc2 = worldToScreen(3.5, 13.5, 0, camX, camY);
   drawWallSconce(ctx, pSc2.sx + 4, pSc2.sy - 66);
+  const pScExt = worldToScreen(3.5, 18.5, 0, camX, camY);
+  drawWallSconce(ctx, pScExt.sx + 4, pScExt.sy - 66);
 
   // Parete Nord-Est:
   // - Orologio a cucù con pendolo tra Apex e Corridoio
@@ -1177,15 +1283,21 @@ function drawHubWalls(
   const pTeddy = worldToScreen(13.0, 3.5, 0, camX, camY);
   drawWallPainting(ctx, pTeddy.sx, pTeddy.sy - 54, "🧸");
 
-  // - Finestra panoramica 3 tra Cameretta e terrazzo
+  // - Finestra panoramica 4 tra Cameretta e terrazzo
   const pWin3 = worldToScreen(17.5, 3.5, 0, camX, camY);
-  drawArchedWallWindow(ctx, pWin3.sx, pWin3.sy - 52, "yellow");
+  drawArchedWallWindow(ctx, pWin3.sx, pWin3.sy - 52, "blue");
+
+  // - Quadretto trofeo d'oro verso il terrazzo est
+  const pTrophy = worldToScreen(21.0, 3.5, 0, camX, camY);
+  drawWallPainting(ctx, pTrophy.sx, pTrophy.sy - 54, "🏆");
 
   // - Applique luminose dorate lungo la parete NE
   const pSc3 = worldToScreen(8.5, 3.5, 0, camX, camY);
   drawWallSconce(ctx, pSc3.sx - 4, pSc3.sy - 66);
   const pSc4 = worldToScreen(14.5, 3.5, 0, camX, camY);
   drawWallSconce(ctx, pSc4.sx - 4, pSc4.sy - 66);
+  const pScExtE = worldToScreen(19.0, 3.5, 0, camX, camY);
+  drawWallSconce(ctx, pScExtE.sx - 4, pScExtE.sy - 66);
 }
 
 /** Pavimentazione ricca: piedistallo 3D del diorama, cotto caldo, prato smeraldo, parquet e marmo. */
@@ -1197,9 +1309,9 @@ function drawGroundTiles(
   _t: number,
 ) {
   const minX = 4;
-  const maxX = 20;
+  const maxX = 23;
   const minY = 4;
-  const maxY = 20;
+  const maxY = 23;
 
   // 1. Spessore 3D volumetrico del basamento perimetrale in legno noce pregiato
   const slabH = 18;
@@ -1304,16 +1416,33 @@ function drawGroundTiles(
     ctx.stroke();
   }
 
-  // 2. Piastrelle superiori della superficie
+  // 2. Piastrelle superiori della superficie organizzate in quartieri tematici con grandi viali
   for (let x = minX; x <= maxX; x++) {
     for (let y = minY; y <= maxY; y++) {
       const { sx, sy } = worldToScreen(x, y, 0, camX, camY);
 
-      // Distinzione armoniosa delle zone della villa
+      // Distinzione delle zone della villa e dei grandi viali di raccordo
       const isCourtyard = Math.hypot(x - 11.5, y - 11.5) < 4.8;
-      const isGarden = x >= 15 && y >= 10;
-      const isTerrace = x >= 15 && y < 10;
+      // Viale Reale Nord-Sud (Corso Principale da nord a sud)
+      const isAvenueNS = (x === 11 || x === 12);
+      // Viale Ovest-Est (Strada del Bazar e della Fontana)
+      const isAvenueWE = (y === 14 || y === 15);
+      const isStreet = isAvenueNS || isAvenueWE;
+
+      // Parco Giardino Botanico a Sud-Est
+      const isGarden = x >= 14 && y >= 11 && !isStreet;
+      // Terrazzo Belvedere a Nord-Est
+      const isTerrace = x >= 14 && y < 11 && !isStreet;
+      // Soglia e marmo del Bagno d'Oro
       const isBathThreshold = (x === 11 || x === 12) && y === 4;
+      // Xilofono / Passerella musicale sul terrazzo
+      const isMusicTile = x === 18 && y >= 6 && y <= 10;
+      // Ciottoli del sentiero nel prato (stepping stones)
+      const isSteppingStone =
+        (x === 15 && y === 16) ||
+        (x === 16 && y === 16) ||
+        (x === 15 && y === 18) ||
+        (x === 14 && y === 19);
 
       let topColor = "#fae8d0";
       let borderColor = "#dfc299";
@@ -1332,7 +1461,7 @@ function drawGroundTiles(
         topColor = (x + y) % 2 === 0 ? "#e0f2fe" : "#bae6fd"; // Piastrelle azzurro cielo
         borderColor = "#7dd3fc";
         tileImg = tiles?.terrace ?? null;
-      } else if (isCourtyard) {
+      } else if (isCourtyard || isStreet) {
         topColor = (x + y) % 2 === 0 ? "#ffeed9" : "#fbe3c7"; // Cotto caldo fiorentino
         borderColor = "#e8c9a3";
         tileImg = tiles?.cotto ?? null;
@@ -1343,7 +1472,7 @@ function drawGroundTiles(
         tileImg = tiles?.wood ?? null;
       }
 
-      // 1. Sottofondo cromatico (evita buchi tra piastrelle ad alta risoluzione)
+      // 1. Sottofondo cromatico (evita fessure tra tessere)
       ctx.fillStyle = topColor;
       ctx.beginPath();
       ctx.moveTo(sx, sy - 16);
@@ -1369,7 +1498,56 @@ function drawGroundTiles(
         ctx.stroke();
       }
 
-      // Tappeto reale rosso verso il Bagno d'Oro al centro
+      // 3. Cordoli in pietra (stone curbs) che delimitano le strade
+      if (isStreet && !isCourtyard) {
+        ctx.strokeStyle = "rgba(226, 232, 240, 0.85)";
+        ctx.lineWidth = 1.6;
+        if (isAvenueNS) {
+          if (x === 11) {
+            ctx.beginPath();
+            ctx.moveTo(sx - 32, sy);
+            ctx.lineTo(sx, sy + 16);
+            ctx.stroke();
+          }
+          if (x === 12) {
+            ctx.beginPath();
+            ctx.moveTo(sx, sy - 16);
+            ctx.lineTo(sx + 32, sy);
+            ctx.stroke();
+          }
+        }
+        if (isAvenueWE) {
+          if (y === 14) {
+            ctx.beginPath();
+            ctx.moveTo(sx - 32, sy);
+            ctx.lineTo(sx, sy - 16);
+            ctx.stroke();
+          }
+          if (y === 15) {
+            ctx.beginPath();
+            ctx.moveTo(sx, sy + 16);
+            ctx.lineTo(sx + 32, sy);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // 4. Ciottolo naturale nel prato (stepping stone)
+      if (isSteppingStone) {
+        ctx.fillStyle = "rgba(241, 245, 249, 0.9)";
+        ctx.beginPath();
+        ctx.ellipse(sx, sy, 14, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#cbd5e1";
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+        ctx.beginPath();
+        ctx.ellipse(sx - 2, sy - 1.5, 8, 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 5. Tappeto reale rosso verso il Bagno d'Oro al centro
       const isRedCarpet = (x === 11 || x === 12) && y >= 5 && y <= 9;
       if (isRedCarpet) {
         ctx.fillStyle = (x + y) % 2 === 0 ? "rgba(185, 28, 28, 0.88)" : "rgba(153, 27, 27, 0.88)";
@@ -1382,8 +1560,36 @@ function drawGroundTiles(
         ctx.fill();
 
         ctx.strokeStyle = "rgba(251, 191, 36, 0.85)";
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1.2;
         ctx.stroke();
+      }
+
+      // 6. Piastrella dello xilofono musicale sul terrazzo
+      if (isMusicTile) {
+        const musicColors = ["#f87171", "#fb923c", "#facc15", "#4ade80", "#38bdf8"];
+        const noteNames = ["DO", "RE", "MI", "FA", "SOL"];
+        const noteIdx = y - 6;
+        const color = musicColors[noteIdx] ?? "#fde047";
+        const noteName = noteNames[noteIdx] ?? "DO";
+
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy - 14);
+        ctx.lineTo(sx + 28, sy);
+        ctx.lineTo(sx, sy + 14);
+        ctx.lineTo(sx - 28, sy);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2.0;
+        ctx.stroke();
+
+        ctx.font = '900 11px "Fredoka", sans-serif';
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(noteName, sx, sy);
       }
     }
   }
@@ -2335,4 +2541,760 @@ function drawDialogueBubble(
   ctx.fillStyle = "#9ca3af";
   ctx.textAlign = "right";
   ctx.fillText("TOCCA PER CONTINUARE ❯❯", bx + bubbleW - 20, by + 76);
+}
+
+/** Lampione vittoriano in ferro battuto con lanterna esagonale e alone di luce proiettato sul suolo. */
+function drawLamppost(
+  ctx: CanvasRenderingContext2D,
+  wx: number,
+  wy: number,
+  camX: number,
+  camY: number,
+  t: number,
+) {
+  const { sx, sy } = worldToScreen(wx, wy, 0, camX, camY);
+
+  // 1. Grande alone caldo e luminoso proiettato sul selciato
+  const lightGlow = ctx.createRadialGradient(sx, sy, 4, sx, sy, 52);
+  lightGlow.addColorStop(0, "rgba(254, 240, 138, 0.38)");
+  lightGlow.addColorStop(0.5, "rgba(253, 224, 71, 0.15)");
+  lightGlow.addColorStop(1, "rgba(253, 224, 71, 0)");
+  ctx.fillStyle = lightGlow;
+  ctx.beginPath();
+  ctx.ellipse(sx, sy, 52, 26, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 2. Ombra soffusa alla base del basamento
+  drawSoftShadow(ctx, sx, sy + 2, 16, 7, {
+    maxAlpha: 0.45,
+    contactRatio: 0.65,
+    tone: wx >= 11.5 && wy >= 11.5 ? "grass" : "warm",
+  });
+
+  ctx.save();
+  ctx.translate(sx, sy);
+
+  // Basamento in ghisa sagomato
+  ctx.fillStyle = "#1e293b";
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 9, 4.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#334155";
+  ctx.fillRect(-6, -7, 12, 7);
+
+  // Asta del lampione con anelli ornamentali in ottone
+  const poleH = 72;
+  ctx.fillStyle = "#1e293b";
+  ctx.fillRect(-2.5, -poleH, 5, poleH - 7);
+  ctx.fillStyle = "#f59e0b";
+  ctx.fillRect(-3.5, -24, 7, 3);
+  ctx.fillRect(-3.5, -48, 7, 3);
+
+  // Braccetti a voluta della lanterna
+  ctx.strokeStyle = "#1e293b";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-6, -poleH + 4);
+  ctx.quadraticCurveTo(0, -poleH + 8, 6, -poleH + 4);
+  ctx.stroke();
+
+  // Lanterna esagonale
+  const ly = -poleH - 12;
+  const lw = 16;
+  const lh = 20;
+
+  // Fondo lanterna
+  ctx.fillStyle = "#334155";
+  ctx.fillRect(-lw / 2 + 2, ly + lh - 3, lw - 4, 3);
+
+  // Vetro luminoso con luce dorata calda
+  const flicker = 1 + Math.sin(t * 7.5 + wx) * 0.08;
+  const glassGlow = ctx.createLinearGradient(0, ly, 0, ly + lh);
+  glassGlow.addColorStop(0, `rgba(254, 240, 138, ${0.9 * flicker})`);
+  glassGlow.addColorStop(0.5, `rgba(253, 224, 71, ${0.95 * flicker})`);
+  glassGlow.addColorStop(1, `rgba(251, 146, 60, ${0.85 * flicker})`);
+  ctx.fillStyle = glassGlow;
+  ctx.fillRect(-lw / 2 + 1, ly, lw - 2, lh - 3);
+
+  // Cornice e montanti della lanterna
+  ctx.strokeStyle = "#1e293b";
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(-lw / 2 + 1, ly, lw - 2, lh - 3);
+  ctx.beginPath();
+  ctx.moveTo(0, ly);
+  ctx.lineTo(0, ly + lh - 3);
+  ctx.stroke();
+
+  // Tettuccio a cuspide della lanterna con puntale dorato
+  ctx.fillStyle = "#0f172a";
+  ctx.beginPath();
+  ctx.moveTo(-lw / 2 - 2, ly);
+  ctx.lineTo(0, ly - 9);
+  ctx.lineTo(lw / 2 + 2, ly);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#f59e0b";
+  ctx.beginPath();
+  ctx.arc(0, ly - 9, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/** Panchina del parco in legno noce lucido con braccioli in ferro battuto. */
+function drawParkBench(
+  ctx: CanvasRenderingContext2D,
+  wx: number,
+  wy: number,
+  rot: "SE" | "SW",
+  camX: number,
+  camY: number,
+) {
+  const { sx, sy } = worldToScreen(wx, wy, 0, camX, camY);
+  const flip = rot === "SW" ? -1 : 1;
+
+  // Ombra a terra
+  drawSoftShadow(ctx, sx, sy + 3, 30, 13, {
+    tone: "warm",
+    maxAlpha: 0.36,
+    contactRatio: 0.5,
+  });
+
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.scale(flip, 1);
+
+  // Piedi in ghisa
+  ctx.strokeStyle = "#1e293b";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-20, 2);
+  ctx.lineTo(-14, -12);
+  ctx.lineTo(-10, -3);
+  ctx.moveTo(14, 8);
+  ctx.lineTo(20, -6);
+  ctx.lineTo(24, 3);
+  ctx.stroke();
+
+  // Doghe della seduta (legno noce caldo)
+  const slats = [
+    { y: -10, col: "#92400e" },
+    { y: -7, col: "#b45309" },
+    { y: -4, col: "#d97706" },
+  ];
+  for (const s of slats) {
+    ctx.fillStyle = s.col;
+    ctx.beginPath();
+    ctx.moveTo(-22, s.y);
+    ctx.lineTo(20, s.y + 10);
+    ctx.lineTo(22, s.y + 13);
+    ctx.lineTo(-20, s.y + 3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#78350f";
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  }
+
+  // Schienale
+  for (let bi = 0; bi < 2; bi++) {
+    const by = -20 + bi * 4;
+    ctx.fillStyle = bi === 0 ? "#b45309" : "#d97706";
+    ctx.beginPath();
+    ctx.moveTo(-22, by);
+    ctx.lineTo(20, by + 10);
+    ctx.lineTo(20, by + 13);
+    ctx.lineTo(-22, by + 3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#78350f";
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  }
+
+  // Bracciolo decorativo
+  ctx.strokeStyle = "#0f172a";
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.arc(-16, -14, 5, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/** Tavolino bistrot da tè con ombrellone pastello a spicchi. */
+function drawBistroTable(
+  ctx: CanvasRenderingContext2D,
+  wx: number,
+  wy: number,
+  camX: number,
+  camY: number,
+  t: number,
+) {
+  const { sx, sy } = worldToScreen(wx, wy, 0, camX, camY);
+
+  // Ombra a terra del tavolino e dell'ombrellone
+  drawSoftShadow(ctx, sx, sy + 3, 34, 15, {
+    tone: "warm",
+    maxAlpha: 0.38,
+    contactRatio: 0.52,
+  });
+
+  ctx.save();
+  ctx.translate(sx, sy);
+
+  // Sedie da bistrot in ferro battuto bianco (2 sedie)
+  // Sedia 1 (sinistra)
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-22, 0);
+  ctx.lineTo(-22, -18);
+  ctx.arc(-22, -22, 6, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = "#fde047";
+  ctx.fillRect(-26, -10, 9, 3);
+
+  // Sedia 2 (destra)
+  ctx.beginPath();
+  ctx.moveTo(22, 6);
+  ctx.lineTo(22, -12);
+  ctx.arc(22, -16, 6, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = "#f472b6";
+  ctx.fillRect(17, -4, 9, 3);
+
+  // Gamba centrale del tavolo in ferro
+  ctx.fillStyle = "#64748b";
+  ctx.fillRect(-2, -22, 4, 22);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 8, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Piano rotondo del tavolo smaltato bianco
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.ellipse(0, -22, 18, 9, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Servizio da tè: tazzina fumante e piattino con biscotti
+  ctx.fillStyle = "#f472b6";
+  ctx.fillRect(-8, -27, 6, 5); // Tazzina rosa
+  ctx.fillStyle = "#fde047";
+  ctx.fillRect(-10, -22, 10, 2); // Piattino
+  // Vapore che sale
+  const steamY = Math.sin(t * 3.5) * 3;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(-5, -29);
+  ctx.quadraticCurveTo(-7, -33 + steamY, -5, -37 + steamY);
+  ctx.stroke();
+
+  // Biscottini dorati sul piatto destro
+  ctx.fillStyle = "#b45309";
+  ctx.beginPath();
+  ctx.arc(6, -24, 2.5, 0, Math.PI * 2);
+  ctx.arc(10, -23, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Palo centrale dell'ombrellone
+  const umbrellaH = 88;
+  ctx.fillStyle = "#78350f";
+  ctx.fillRect(-2.5, -umbrellaH, 5, umbrellaH - 22);
+
+  // Calotta dell'ombrellone da sole pastello a spicchi (giallo e rosa pastello)
+  const uy = -umbrellaH;
+  const uw = 52;
+  const uh = 26;
+  const segments = [
+    { c: "#fde047" },
+    { c: "#f472b6" },
+    { c: "#fde047" },
+    { c: "#f472b6" },
+    { c: "#fde047" },
+  ];
+
+  ctx.save();
+  ctx.translate(0, uy);
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i]!;
+    const segW = uw / segments.length;
+    const x0 = -uw / 2 + i * segW;
+    const x1 = x0 + segW;
+
+    ctx.fillStyle = seg.c;
+    ctx.beginPath();
+    ctx.moveTo(0, -uh);
+    ctx.lineTo(x0, 0);
+    ctx.quadraticCurveTo((x0 + x1) / 2, 4, x1, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Puntale in ottone in cima all'ombrellone
+  ctx.fillStyle = "#f59e0b";
+  ctx.beginPath();
+  ctx.arc(0, -uh - 2, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
+}
+
+/** Canestro da basket giocattolo con tabellone, anello, retina animata e score. */
+function drawBasketballHoop(
+  ctx: CanvasRenderingContext2D,
+  hoop: HubState["toys"]["hoop"],
+  camX: number,
+  camY: number,
+  t: number,
+) {
+  const { sx, sy } = worldToScreen(hoop.wx, hoop.wy, 0, camX, camY);
+
+  // Ombra a terra del basamento e del canestro
+  drawSoftShadow(ctx, sx, sy + 3, 32, 14, {
+    tone: "grass",
+    maxAlpha: 0.42,
+    contactRatio: 0.6,
+  });
+
+  ctx.save();
+  ctx.translate(sx, sy);
+
+  // Basamento imbottito blu
+  ctx.fillStyle = "#1e3a8a";
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 14, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#2563eb";
+  ctx.fillRect(-10, -12, 20, 12);
+  ctx.strokeStyle = "#1d4ed8";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(-10, -12, 20, 12);
+
+  // Asta ricurva in acciaio (sale fino a 95px e si piega in avanti)
+  ctx.strokeStyle = "#3b82f6";
+  ctx.lineWidth = 4.5;
+  ctx.beginPath();
+  ctx.moveTo(0, -12);
+  ctx.lineTo(0, -78);
+  ctx.quadraticCurveTo(0, -96, -14, -96);
+  ctx.stroke();
+
+  // Tabellone trasparente con bordo rosso brillante
+  const bbX = -18;
+  const bbY = -120;
+  const bbW = 46;
+  const bbH = 34;
+
+  ctx.fillStyle = "rgba(255, 255, 255, 0.88)";
+  ctx.fillRect(bbX - bbW / 2, bbY, bbW, bbH);
+  ctx.strokeStyle = "#ef4444";
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(bbX - bbW / 2, bbY, bbW, bbH);
+
+  // Bersaglio rettangolare interno
+  ctx.strokeStyle = "#ef4444";
+  ctx.lineWidth = 1.8;
+  ctx.strokeRect(bbX - 10, bbY + 16, 20, 14);
+
+  // Anello in metallo arancione (ferro)
+  const rimX = bbX;
+  const rimY = bbY + 30;
+  const rimRx = 14;
+  const rimRy = 6;
+
+  ctx.strokeStyle = "#ea580c";
+  ctx.lineWidth = 3.0;
+  ctx.beginPath();
+  ctx.ellipse(rimX, rimY, rimRx, rimRy, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Retina animata (effetto swish se fatto canestro di recente!)
+  const isSwishing = hoop.swishT > 0 && t - hoop.swishT < 0.75;
+  const swishWave = isSwishing ? Math.sin((t - hoop.swishT) * 18) * 6 : Math.sin(t * 3) * 1.5;
+  const netH = 22;
+
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  for (let fi = -rimRx + 2; fi <= rimRx - 2; fi += 4) {
+    const bottomFi = fi * 0.55 + (isSwishing ? swishWave * (fi > 0 ? 1 : -1) : swishWave * 0.3);
+    ctx.moveTo(rimX + fi, rimY);
+    ctx.lineTo(rimX + bottomFi, rimY + netH);
+  }
+  for (let ri = 1; ri <= 3; ri++) {
+    const ny = rimY + (netH * ri) / 3;
+    const rScale = 1 - ri * 0.15 + (isSwishing ? 0.3 : 0);
+    ctx.moveTo(rimX - rimRx * rScale, ny);
+    ctx.lineTo(rimX + rimRx * rScale, ny);
+  }
+  ctx.stroke();
+
+  // Badge cartoon fluttuante sopra il tabellone con punteggio
+  drawHubPillBadge(ctx, bbX, bbY - 18, `BASKET: ${hoop.score}`, "🏀", {
+    theme: hoop.score > 0 ? "gold" : "cyan",
+  });
+
+  ctx.restore();
+}
+
+/** Cannocchiale panoramico in ottone sul terrazzo belvedere. */
+function drawTelescope(
+  ctx: CanvasRenderingContext2D,
+  tel: HubState["toys"]["telescope"],
+  camX: number,
+  camY: number,
+  t: number,
+) {
+  const { sx, sy } = worldToScreen(tel.wx, tel.wy, 0, camX, camY);
+
+  // Ombra a terra
+  drawSoftShadow(ctx, sx, sy + 3, 24, 11, {
+    tone: "cool",
+    maxAlpha: 0.35,
+    contactRatio: 0.55,
+  });
+
+  ctx.save();
+  ctx.translate(sx, sy);
+
+  // Treppiede in legno mogano lucido
+  ctx.strokeStyle = "#78350f";
+  ctx.lineWidth = 2.8;
+  ctx.beginPath();
+  ctx.moveTo(0, -32);
+  ctx.lineTo(-12, 0);
+  ctx.moveTo(0, -32);
+  ctx.lineTo(12, 3);
+  ctx.moveTo(0, -32);
+  ctx.lineTo(0, 5);
+  ctx.stroke();
+
+  // Snodo e montante in ottone dorato
+  ctx.fillStyle = "#d97706";
+  ctx.beginPath();
+  ctx.arc(0, -34, 4.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Tubo ottico del cannocchiale in ottone lucido puntato verso l'alto-destra
+  ctx.save();
+  ctx.translate(0, -34);
+  ctx.rotate(-0.48);
+
+  ctx.fillStyle = "#f59e0b";
+  ctx.fillRect(-18, -4, 38, 8);
+  ctx.strokeStyle = "#b45309";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(-18, -4, 38, 8);
+
+  // Lente obiettiva anteriore larga
+  ctx.fillStyle = "#38bdf8";
+  ctx.fillRect(20, -5.5, 5, 11);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(21, -3, 2, 4);
+
+  // Oculare posteriore
+  ctx.fillStyle = "#78350f";
+  ctx.fillRect(-22, -2.5, 5, 5);
+
+  ctx.restore();
+
+  // Scintilla brillante sulla lente
+  const glint = (Math.sin(t * 4) + 1) * 0.5;
+  ctx.fillStyle = `rgba(255, 255, 255, ${0.7 * glint})`;
+  ctx.beginPath();
+  ctx.arc(16, -42, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Targhetta fluttuante invitante
+  const bob = Math.sin(t * 5) * 2;
+  drawHubPillBadge(ctx, 0, -68 + bob, "PANORAMA", "🔭", { theme: "cyan" });
+
+  ctx.restore();
+}
+
+/** Stellina dorata 3D fluttuante a quota wz sopra il trampolino. */
+function drawAerialStar(
+  ctx: CanvasRenderingContext2D,
+  s: HubState["toys"]["trampStars"][0],
+  camX: number,
+  camY: number,
+  t: number,
+) {
+  const bob = Math.sin(t * 4.5 + s.id) * 3;
+  const { sx, sy } = worldToScreen(s.wx, s.wy, s.wz, camX, camY);
+  const groundPos = worldToScreen(s.wx, s.wy, 0, camX, camY);
+
+  // Ombra a terra proporzionata all'altitudine
+  const shadowDist = Math.max(0.15, 1 - s.wz * 0.28);
+  drawSoftShadow(ctx, groundPos.sx, groundPos.sy + 2, 16 * shadowDist, 7 * shadowDist, {
+    tone: "grass",
+    maxAlpha: 0.25 * shadowDist,
+  });
+
+  ctx.save();
+  ctx.translate(sx, sy + bob);
+
+  // Alone luminoso attorno alla stella
+  const starGlow = ctx.createRadialGradient(0, 0, 2, 0, 0, 20);
+  starGlow.addColorStop(0, "rgba(254, 240, 138, 0.75)");
+  starGlow.addColorStop(0.5, "rgba(250, 204, 21, 0.25)");
+  starGlow.addColorStop(1, "rgba(250, 204, 21, 0)");
+  ctx.fillStyle = starGlow;
+  ctx.beginPath();
+  ctx.arc(0, 0, 20, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Stella 3D a 5 punte
+  ctx.rotate(t * 1.8 + s.id);
+  const spikes = 5;
+  const outerR = 12;
+  const innerR = 5.5;
+  ctx.fillStyle = "#facc15";
+  ctx.strokeStyle = "#eab308";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let i = 0; i < spikes * 2; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const a = (i * Math.PI) / spikes;
+    const x = Math.sin(a) * r;
+    const y = -Math.cos(a) * r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Punto luce lucido
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(-2, -3, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/** Albero di mele interattivo con frutti pendenti e scuotimento. */
+function drawInteractiveAppleTree(
+  ctx: CanvasRenderingContext2D,
+  tree: HubState["toys"]["appleTrees"][0],
+  art: Art,
+  camX: number,
+  camY: number,
+  t: number,
+) {
+  const { sx, sy } = worldToScreen(tree.wx, tree.wy, 0, camX, camY);
+  const isGrass = tree.wx >= 11.5 && tree.wy >= 11.5;
+  const treeTone: "grass" | "warm" = isGrass ? "grass" : "warm";
+
+  // Ombra diffusa alla base del tronco
+  drawSoftShadow(ctx, sx, sy + 4, 34, 16, {
+    tone: treeTone,
+    maxAlpha: 0.35,
+    contactRatio: 0.45,
+    contactAlpha: 0.22,
+  });
+
+  ctx.save();
+  const isShaking = tree.shakeT > 0 && t - tree.shakeT < 0.6;
+  const shakeOffX = isShaking ? Math.sin((t - tree.shakeT) * 32) * (0.6 - (t - tree.shakeT)) * 8 : 0;
+  ctx.translate(sx + shakeOffX, sy);
+
+  const img = art.hub.tree;
+  const tw = 94;
+  if (img) {
+    const th = tw * (img.height / img.width);
+    ctx.drawImage(img, -tw / 2, -th + 8, tw, th);
+  }
+
+  // Mele rimaste sui rami dell'albero
+  const applePositions = [
+    { x: -18, y: -64 },
+    { x: 12, y: -72 },
+    { x: -4, y: -82 },
+  ];
+  for (let i = 0; i < tree.apples; i++) {
+    const ap = applePositions[i];
+    if (!ap) continue;
+    ctx.fillStyle = "#ef4444";
+    ctx.beginPath();
+    ctx.arc(ap.x, ap.y, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#b91c1c";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(ap.x - 1.5, ap.y - 1.5, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#22c55e";
+    ctx.fillRect(ap.x - 0.5, ap.y - 7, 1.5, 2.5);
+  }
+
+  ctx.restore();
+}
+
+/** Mela caduta a terra con fisica e rotolamento. */
+function drawFallingApple(
+  ctx: CanvasRenderingContext2D,
+  apple: HubState["toys"]["appleTrees"][0]["fallingApples"][0],
+  camX: number,
+  camY: number,
+) {
+  const { sx, sy } = worldToScreen(apple.wx, apple.wy, apple.wz, camX, camY);
+  const groundPos = worldToScreen(apple.wx, apple.wy, 0, camX, camY);
+
+  // Ombra a terra
+  const shadowDist = Math.max(0.2, 1 - apple.wz * 0.35);
+  drawSoftShadow(ctx, groundPos.sx, groundPos.sy + 2, 9 * shadowDist, 4.5 * shadowDist, {
+    tone: "grass",
+    maxAlpha: 0.35 * shadowDist,
+  });
+
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.globalAlpha = Math.max(0, Math.min(1, apple.alpha));
+
+  ctx.fillStyle = "#ef4444";
+  ctx.beginPath();
+  ctx.arc(0, 0, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#b91c1c";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(-1.8, -1.8, 1.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#15803d";
+  ctx.fillRect(-0.5, -8, 1.5, 2.5);
+
+  ctx.restore();
+}
+
+/** Aura arcobaleno incantata della Fontana dei Desideri della Paperella. */
+function drawWishingAura(
+  ctx: CanvasRenderingContext2D,
+  wx: number,
+  wy: number,
+  auraT: number,
+  camX: number,
+  camY: number,
+  t: number,
+) {
+  const { sx, sy } = worldToScreen(wx, wy, 0, camX, camY);
+  const alpha = Math.min(1, auraT * 0.4);
+
+  ctx.save();
+  ctx.translate(sx, sy);
+
+  const rainbowColors = [
+    "rgba(244, 114, 182, ",
+    "rgba(250, 204, 21, ",
+    "rgba(56, 189, 248, ",
+    "rgba(74, 222, 128, ",
+  ];
+
+  for (let i = 0; i < rainbowColors.length; i++) {
+    const rBase = 48 + i * 16 + Math.sin(t * 3 + i) * 6;
+    ctx.strokeStyle = `${rainbowColors[i]}${0.45 * alpha})`;
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.ellipse(0, -6, rBase, rBase * 0.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  for (let p = 0; p < 8; p++) {
+    const px = Math.sin(t * 4 + p * 1.2) * 36;
+    const py = -20 - ((t * 24 + p * 18) % 65);
+    ctx.fillStyle = `rgba(250, 204, 21, ${0.85 * alpha})`;
+    ctx.beginPath();
+    ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+/** Cuoricino fluttuante delle coccole di Micio. */
+function drawPetHeart(
+  ctx: CanvasRenderingContext2D,
+  h: HubState["toys"]["micioPet"]["hearts"][0],
+  camX: number,
+  camY: number,
+) {
+  const { sx, sy } = worldToScreen(h.wx, h.wy, h.wz, camX, camY);
+
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.globalAlpha = Math.max(0, Math.min(1, h.alpha));
+
+  ctx.fillStyle = "#ec4899";
+  ctx.beginPath();
+  ctx.moveTo(0, 3);
+  ctx.bezierCurveTo(-5, -4, -10, -2, -10, -6);
+  ctx.bezierCurveTo(-10, -11, -4, -11, 0, -6);
+  ctx.bezierCurveTo(4, -11, 10, -11, 10, -6);
+  ctx.bezierCurveTo(10, -2, 5, -4, 0, 3);
+  ctx.fill();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(-4, -8, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/** Messaggio fluttuante pop dinamico ("CANESTRO! +2 ⭐", "GNAM! 🍎 +1 ⭐", ecc). */
+function drawFloatingMessage(
+  ctx: CanvasRenderingContext2D,
+  msg: HubState["floatingMessages"][0],
+  camX: number,
+  camY: number,
+) {
+  const { sx, sy } = worldToScreen(msg.wx, msg.wy, msg.wz, camX, camY);
+
+  ctx.save();
+  ctx.translate(sx, sy);
+
+  const text = msg.text;
+  ctx.font = '900 13px "Fredoka", "Nunito", sans-serif';
+  const textW = ctx.measureText(text).width;
+  const pillW = textW + 28;
+  const pillH = 26;
+
+  ctx.fillStyle = "rgba(45, 20, 10, 0.28)";
+  ctx.beginPath();
+  ctx.roundRect(-pillW / 2 + 2, -pillH / 2 + 2, pillW, pillH, 13);
+  ctx.fill();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.roundRect(-pillW / 2, -pillH / 2, pillW, pillH, 13);
+  ctx.fill();
+  ctx.strokeStyle = msg.color;
+  ctx.lineWidth = 2.4;
+  ctx.stroke();
+
+  ctx.fillStyle = "#1e293b";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, 0, 0.5);
+
+  ctx.restore();
 }

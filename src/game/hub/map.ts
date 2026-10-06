@@ -127,21 +127,30 @@ export function getMapColliders(): { circles: ColliderCircle[]; rects: ColliderR
       // Gazebo del mercatino (struttura banco in legno)
       { x: 9.5, y: 14.5, r: 1.05 },
       // Alberelli e cespugli nel cortile
-      { x: 19.5, y: 18.5, r: 1.2 },
-      { x: 16.5, y: 19.5, r: 1.2 },
-      { x: 20.5, y: 11.5, r: 1.2 },
-      { x: 3.5, y: 19.5, r: 1.2 },
+      { x: 20.5, y: 18.5, r: 1.1 },
+      { x: 16.5, y: 13.5, r: 1.1 },
+      { x: 4.5, y: 20.5, r: 1.1 },
+      { x: 19.5, y: 18.5, r: 1.1 },
+      // Canestro da basket
+      { x: 13.8, y: 19.5, r: 0.6 },
+      // Tavolino bistrot da tè
+      { x: 6.5, y: 15.5, r: 0.75 },
+      // Panchine in legno del viale
+      { x: 6.5, y: 11.5, r: 0.65 },
+      { x: 15.5, y: 11.5, r: 0.65 },
+      // Cannocchiale montante
+      { x: 20.5, y: 5.5, r: 0.5 },
       // Amici NPC (impediscono compenetrazioni dello sprite ma lasciano raggio di dialogo)
       { x: 8.5, y: 8.5, r: 0.8 }, // Mamma Orsa
       { x: 17.5, y: 11.5, r: 0.8 }, // Papà Orso
       { x: 14.5, y: 7.0, r: 0.65 }, // Micio il Gatto
     ],
     rects: [
-      // Muro perimetrale esterno (confini del mondo calpestabile: 3.6 <= x, y <= 21.6)
-      { x1: -5, y1: -5, x2: 3.6, y2: 27 }, // Parete Ovest / Nord-Ovest
-      { x1: 21.6, y1: -5, x2: 28, y2: 27 }, // Bordo Est
-      { x1: -5, y1: -5, x2: 27, y2: 3.6 }, // Parete Nord / Nord-Est
-      { x1: -5, y1: 21.6, x2: 27, y2: 28 }, // Bordo Sud
+      // Muro perimetrale esterno (confini del mondo calpestabile: 3.6 <= x, y <= 23.6)
+      { x1: -5, y1: -5, x2: 3.6, y2: 30 }, // Parete Ovest / Nord-Ovest
+      { x1: 23.6, y1: -5, x2: 32, y2: 30 }, // Bordo Est
+      { x1: -5, y1: -5, x2: 32, y2: 3.6 }, // Parete Nord / Nord-Est
+      { x1: -5, y1: 23.6, x2: 32, y2: 32 }, // Bordo Sud
 
       // Recinzione giardino est e terrazzo
       { x1: 17.8, y1: 6.8, x2: 18.8, y2: 10.6 },

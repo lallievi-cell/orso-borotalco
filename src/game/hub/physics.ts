@@ -19,6 +19,11 @@ export type HubStepEvent = {
   ballTramp?: boolean;
   ballCombo?: number;
   ballNpcPass?: { npcId: string; line: string };
+  hoopScore?: boolean;
+  starPop?: boolean;
+  treeShake?: boolean;
+  musicNote?: { note: string; freq: number };
+  starReward?: number;
 };
 
 /** Genera scintille colorate e stelline giocose attorno alla palla. */
@@ -363,6 +368,155 @@ export function stepHub(hub: HubState, input: HubInput, dt: number): HubStepEven
     ev.bounce = true;
   }
 
+  // 7b. Canestro da Basket con la palla da spiaggia
+  const hoop = hub.toys.hoop;
+  if (hoop) {
+    const dHoop = Math.hypot(ball.wx - hoop.wx, ball.wy - hoop.wy);
+    if (dHoop < hoop.radius * 0.7 && Math.abs(ball.wz - 1.65) < 0.45 && ball.vz < 0 && hub.t - hoop.lastScoreT > 1.2) {
+      hoop.score += 1;
+      hoop.swishT = hub.t;
+      hoop.lastScoreT = hub.t;
+      ev.hoopScore = true;
+      ev.starReward = (ev.starReward ?? 0) + 2;
+      ball.vz = -0.55;
+      ball.vx *= 0.2;
+      ball.vy *= 0.2;
+      spawnBallSparks(ball, 16, ["#fde047", "#f59e0b", "#38bdf8", "#ec4899", "#ffffff"]);
+      hub.floatingMessages.push({
+        id: Math.random(),
+        text: "CANESTRO! +2 ⭐",
+        wx: hoop.wx,
+        wy: hoop.wy,
+        wz: 2.6,
+        color: "#f59e0b",
+        t: hub.t,
+      });
+    }
+    // Rimbalzo sul tabellone del canestro
+    if (Math.abs(ball.wy - (hoop.wy + 0.35)) < 0.35 && Math.abs(ball.wx - hoop.wx) < 0.85 && ball.wz >= 1.4 && ball.wz <= 2.6) {
+      if (ball.vy > 0) {
+        ball.vy = -Math.abs(ball.vy) * 0.75 - 0.6;
+        ball.squish = 0.3;
+      }
+    }
+  }
+
+  // 7c. Stelline aeree del trampolino
+  for (const s of hub.toys.trampStars) {
+    if (!s.collected && p.wz > 0.4 && Math.hypot(p.wx - 16.5, p.wy - 17.5) < 1.35) {
+      if (Math.abs(p.wz - s.wz) < 0.55) {
+        s.collected = true;
+        s.respawnT = hub.t + 12.0;
+        ev.starPop = true;
+        ev.starReward = (ev.starReward ?? 0) + 1;
+        hub.floatingMessages.push({
+          id: Math.random(),
+          text: "+1 ⭐ STELLINA IN VOLO!",
+          wx: s.wx,
+          wy: s.wy,
+          wz: s.wz + 0.5,
+          color: "#facc15",
+          t: hub.t,
+        });
+      }
+    }
+    if (s.collected && hub.t >= s.respawnT) {
+      s.collected = false;
+    }
+  }
+
+  // 7d. Alberi di mele scuotibili e mele cadenti
+  for (const tree of hub.toys.appleTrees) {
+    const dPlayerTree = Math.hypot(p.wx - tree.wx, p.wy - tree.wy);
+    const dBallTree = Math.hypot(ball.wx - tree.wx, ball.wy - tree.wy);
+    const ballHit = dBallTree < 1.2 && Math.hypot(ball.vx, ball.vy) > 1.4;
+
+    if (((dPlayerTree < 1.35 && p.moving) || ballHit) && tree.apples > 0 && hub.t - tree.shakeT > 1.2) {
+      tree.shakeT = hub.t;
+      tree.apples -= 1;
+      ev.treeShake = true;
+      tree.fallingApples.push({
+        wx: tree.wx + (Math.random() - 0.5) * 0.7,
+        wy: tree.wy + (Math.random() - 0.5) * 0.7,
+        wz: 2.3,
+        vx: ballHit ? ball.vx * 0.25 : (Math.random() - 0.5) * 1.6,
+        vy: ballHit ? ball.vy * 0.25 : (Math.random() - 0.5) * 1.6,
+        vz: 0.6,
+        alpha: 1.0,
+      });
+    }
+
+    // Fisica mele cadute
+    for (let ai = tree.fallingApples.length - 1; ai >= 0; ai--) {
+      const apple = tree.fallingApples[ai]!;
+      apple.wx += apple.vx * dt;
+      apple.wy += apple.vy * dt;
+      apple.wz += apple.vz * dt;
+      apple.vz -= 9.8 * dt;
+      if (apple.wz <= 0) {
+        apple.wz = 0;
+        apple.vz = -apple.vz * 0.45;
+        apple.vx *= 0.68;
+        apple.vy *= 0.68;
+      }
+      // Raccolta mela da terra
+      const dEat = Math.hypot(p.wx - apple.wx, p.wy - apple.wy);
+      if (dEat < 0.65 && apple.wz <= 0.35) {
+        tree.fallingApples.splice(ai, 1);
+        ev.starReward = (ev.starReward ?? 0) + 1;
+        hub.floatingMessages.push({
+          id: Math.random(),
+          text: "GNAM! 🍎 +1 ⭐",
+          wx: p.wx,
+          wy: p.wy,
+          wz: 1.5,
+          color: "#ef4444",
+          t: hub.t,
+        });
+      }
+    }
+  }
+
+  // 7e. Piastrelle musicali (xilofono sul terrazzo)
+  for (const tile of hub.toys.musicTiles) {
+    const dTile = Math.hypot(p.wx - tile.wx, p.wy - tile.wy);
+    if (dTile < 0.65 && p.wz <= 0.15 && hub.t - tile.triggerT > 0.45) {
+      tile.triggerT = hub.t;
+      ev.musicNote = { note: tile.note, freq: tile.freq };
+      hub.floatingMessages.push({
+        id: Math.random(),
+        text: `🎵 ${tile.note}`,
+        wx: tile.wx,
+        wy: tile.wy,
+        wz: 1.2,
+        color: tile.color,
+        t: hub.t,
+      });
+    }
+  }
+
+  // 7f. Cuoricini coccole micio
+  for (let hi = hub.toys.micioPet.hearts.length - 1; hi >= 0; hi--) {
+    const h = hub.toys.micioPet.hearts[hi]!;
+    h.wz += h.vy * dt;
+    h.alpha -= dt * 0.8;
+    if (h.alpha <= 0) {
+      hub.toys.micioPet.hearts.splice(hi, 1);
+    }
+  }
+
+  // 7g. Messaggi fluttuanti
+  for (let mi = hub.floatingMessages.length - 1; mi >= 0; mi--) {
+    const msg = hub.floatingMessages[mi]!;
+    msg.wz += 0.85 * dt;
+    if (hub.t - msg.t > 1.8) {
+      hub.floatingMessages.splice(mi, 1);
+    }
+  }
+
+  // 7h. Decay fontana aura
+  hub.toys.wishingFountain.auraT = Math.max(0, hub.toys.wishingFountain.auraT - dt);
+
   // 8. Rilevamento portali (porte stanze)
   let foundPortal: PortalInfo | null = null;
   for (const portal of hub.portals) {
@@ -374,10 +528,13 @@ export function stepHub(hub: HubState, input: HubInput, dt: number): HubStepEven
   }
   hub.activePortal = foundPortal;
 
-  // 9. Rilevamento NPC e shop
+  // 9. Rilevamento NPC, shop, fontana e cannocchiale
   const distToShop = Math.hypot(p.wx - 9.5, p.wy - 14.5);
   const isNearShop = distToShop < 2.6;
   hub.nearShop = isNearShop;
+
+  hub.nearFountain = Math.hypot(p.wx - 11.5, p.wy - 11.5) < 2.4;
+  hub.nearTelescope = Math.hypot(p.wx - 20.5, p.wy - 5.5) < 1.8;
 
   let foundNpc: NpcInfo | null = null;
   for (const npc of hub.npcs) {
@@ -396,11 +553,11 @@ export function stepHub(hub: HubState, input: HubInput, dt: number): HubStepEven
   }
   hub.activeNpc = foundNpc;
 
-  // 10. Movimento fluido della telecamera con inquadratura ideale del diorama
+  // 10. Movimento fluido della telecamera con inquadratura ideale del diorama esteso
   const targetScreen = worldToScreen(p.wx, p.wy, p.wz);
   const camFollow = 1 - Math.exp(-6 * dt);
-  const targetCamX = Math.max(-140, Math.min(140, targetScreen.sx));
-  const targetCamY = Math.max(260, Math.min(450, targetScreen.sy - 24));
+  const targetCamX = Math.max(-180, Math.min(180, targetScreen.sx));
+  const targetCamY = Math.max(240, Math.min(500, targetScreen.sy - 24));
   hub.cam.x += (targetCamX - hub.cam.x) * camFollow;
   hub.cam.y += (targetCamY - hub.cam.y) * camFollow;
 

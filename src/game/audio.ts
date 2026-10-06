@@ -285,6 +285,28 @@ export function createAudio() {
       tone(698.46, 0.12, "sine", 0.04, t);
       tone(880.0, 0.18, "sine", 0.04, t + 0.08);
     },
+    note(freq: number) {
+      // Nota musicale cristallina della passerella / xilofono
+      haptic(15);
+      const ac = ensure();
+      if (!ac || !master || muted) return;
+      playMusicBoxNote(freq, 0.45, ac.currentTime, 1.3);
+    },
+    rustle() {
+      // Fruscio delle foglie dell'albero e mela che cade
+      haptic(20);
+      tone(180, 0.1, "triangle", 0.045, undefined, 90);
+      tone(320, 0.08, "sine", 0.035);
+    },
+    swish() {
+      // Canestro da basket: retina "swish!" e trionfo
+      haptic([20, 30, 45]);
+      const ac = ensure();
+      const t = ac?.currentTime ?? 0;
+      tone(440, 0.08, "sine", 0.05, t);
+      tone(660, 0.12, "sine", 0.05, t + 0.06);
+      tone(880, 0.16, "triangle", 0.04, t + 0.12);
+    },
   };
 }
 
