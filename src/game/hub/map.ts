@@ -17,17 +17,17 @@ export const ROOM_NAMES = [
 
 export const ROOM_ICONS = ["🛋️", "🍳", "🌸", "🚪", "🧺", "🧸", "🫧", "🚽"];
 
-/** Crea i portali delle 8 stanze posizionati e orientati in linea con i muri del diorama. */
+/** Crea i portali delle 8 stanze posizionati e orientati a filo con le pareti a L del diorama. */
 export function createPortals(save: SaveData): PortalInfo[] {
   const portalConfigs: { wx: number; wy: number; flip: number }[] = [
-    { wx: 5.0, wy: 8.5, flip: 1 }, // 0: Salotto (Muro NO, rivolto verso SE nel cortile)
-    { wx: 5.0, wy: 13.5, flip: 1 }, // 1: Cucina (Muro NO, rivolto verso SE nel cortile)
-    { wx: 18.5, wy: 15.5, flip: -1 }, // 2: Giardino (Soglia giardino a sud-est, rivolto verso SO)
-    { wx: 8.5, wy: 5.6, flip: -1 }, // 3: Corridoio (Muro NE, rivolto verso SO nel cortile)
-    { wx: 5.0, wy: 18.5, flip: 1 }, // 4: Lavanderia (Muro NO, rivolto verso SE nel cortile)
-    { wx: 14.5, wy: 5.6, flip: -1 }, // 5: Cameretta (Muro NE, rivolto verso SO nel cortile)
-    { wx: 18.5, wy: 7.5, flip: -1 }, // 6: Terrazzo (Muro est con staccionata, rivolto verso SO)
-    { wx: 11.5, wy: 4.5, flip: -1 }, // 7: Bagno d'Oro (Apice settentrionale della villa, sul marmo rosa)
+    { wx: 4.2, wy: 8.5, flip: 1 }, // 0: Salotto (Parete NO, inserito nel muro)
+    { wx: 4.2, wy: 13.5, flip: 1 }, // 1: Cucina (Parete NO, inserito nel muro)
+    { wx: 18.5, wy: 15.5, flip: -1 }, // 2: Giardino (Soglia giardino a sud-est)
+    { wx: 8.5, wy: 4.2, flip: -1 }, // 3: Corridoio (Parete NE, inserito nel muro)
+    { wx: 4.2, wy: 18.5, flip: 1 }, // 4: Lavanderia (Parete NO, inserito nel muro)
+    { wx: 14.5, wy: 4.2, flip: -1 }, // 5: Cameretta (Parete NE, inserito nel muro)
+    { wx: 18.5, wy: 7.5, flip: -1 }, // 6: Terrazzo (Soglia terrazzo a est)
+    { wx: 11.5, wy: 4.2, flip: -1 }, // 7: Bagno d'Oro (Apice Parete NE, alla fine del tappeto rosso)
   ];
 
   return portalConfigs.map((c, i) => ({
@@ -137,16 +137,11 @@ export function getMapColliders(): { circles: ColliderCircle[]; rects: ColliderR
       { x: 14.5, y: 7.0, r: 0.65 }, // Micio il Gatto
     ],
     rects: [
-      // Muro perimetrale esterno (confini del mondo calpestabile: 2 <= x, y <= 21)
-      { x1: -5, y1: -5, x2: 2.2, y2: 27 }, // Ovest
-      { x1: 21.8, y1: -5, x2: 28, y2: 27 }, // Est
-      { x1: -5, y1: -5, x2: 27, y2: 1.8 }, // Nord
-      { x1: -5, y1: 21.8, x2: 27, y2: 28 }, // Sud
-
-      // Muri interni della casa (ala nord)
-      { x1: 2.5, y1: 6.8, x2: 8.0, y2: 7.2 },
-      { x1: 2.5, y1: 11.8, x2: 8.0, y2: 12.2 },
-      { x1: 2.5, y1: 16.8, x2: 8.0, y2: 17.2 },
+      // Muro perimetrale esterno (confini del mondo calpestabile: 3.6 <= x, y <= 21.6)
+      { x1: -5, y1: -5, x2: 3.6, y2: 27 }, // Parete Ovest / Nord-Ovest
+      { x1: 21.6, y1: -5, x2: 28, y2: 27 }, // Bordo Est
+      { x1: -5, y1: -5, x2: 27, y2: 3.6 }, // Parete Nord / Nord-Est
+      { x1: -5, y1: 21.6, x2: 27, y2: 28 }, // Bordo Sud
 
       // Recinzione giardino est e terrazzo
       { x1: 17.8, y1: 6.8, x2: 18.8, y2: 10.6 },

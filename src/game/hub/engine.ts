@@ -15,8 +15,15 @@ export function createHub(save: SaveData, returnPortalIndex: number | null = nul
 
   if (returnPortalIndex !== null && portals[returnPortalIndex]) {
     const p = portals[returnPortalIndex]!;
-    startX = p.wx;
-    startY = p.wy + 0.8;
+    if (p.flip === 1) {
+      // Esce verso il cortile dalla parete Nord-Ovest (+X)
+      startX = p.wx + 0.95;
+      startY = p.wy;
+    } else {
+      // Esce verso il cortile dalla parete Nord-Est (+Y)
+      startX = p.wx;
+      startY = p.wy + 0.95;
+    }
   }
 
   const initialScreen = worldToScreen(startX, startY, 0);
@@ -35,8 +42,8 @@ export function createHub(save: SaveData, returnPortalIndex: number | null = nul
       dustPuffs: [],
     },
     cam: {
-      x: initialScreen.sx,
-      y: initialScreen.sy,
+      x: Math.max(-140, Math.min(140, initialScreen.sx)),
+      y: Math.max(260, Math.min(450, initialScreen.sy - 24)),
     },
     tapTarget: null,
     dialogue: null,

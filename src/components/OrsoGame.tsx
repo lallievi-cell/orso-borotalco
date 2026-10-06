@@ -451,7 +451,17 @@ export function OrsoGame() {
       const ox = (canvas.width - VIEW_W * scale) / 2;
       const oy = wide ? (canvas.height - VIEW_H * scale) / 2 : (canvas.height - VIEW_H * scale) * 0.12;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = wide ? "#f3c7ae" : "#fff4e4";
+      if (b.mode === "hub") {
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        skyGrad.addColorStop(0, "#bae6fd");
+        skyGrad.addColorStop(0.35, "#e0f2fe");
+        skyGrad.addColorStop(0.65, "#fef3c7");
+        skyGrad.addColorStop(0.85, "#fed7aa");
+        skyGrad.addColorStop(1, "#faebd7");
+        ctx.fillStyle = skyGrad;
+      } else {
+        ctx.fillStyle = wide ? "#f3c7ae" : "#fff4e4";
+      }
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.setTransform(scale, 0, 0, scale, ox, oy);
       ctx.imageSmoothingEnabled = true;

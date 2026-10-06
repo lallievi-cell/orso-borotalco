@@ -386,11 +386,13 @@ export function stepHub(hub: HubState, input: HubInput, dt: number): HubStepEven
   hub.activeNpc = foundNpc;
   hub.nearShop = foundNpc?.id === "coniglio";
 
-  // 10. Movimento fluido della telecamera (insegue l'orsetto)
+  // 10. Movimento fluido della telecamera con inquadratura ideale del diorama
   const targetScreen = worldToScreen(p.wx, p.wy, p.wz);
   const camFollow = 1 - Math.exp(-6 * dt);
-  hub.cam.x += (targetScreen.sx - hub.cam.x) * camFollow;
-  hub.cam.y += (targetScreen.sy - hub.cam.y) * camFollow;
+  const targetCamX = Math.max(-140, Math.min(140, targetScreen.sx));
+  const targetCamY = Math.max(260, Math.min(450, targetScreen.sy - 24));
+  hub.cam.x += (targetCamX - hub.cam.x) * camFollow;
+  hub.cam.y += (targetCamY - hub.cam.y) * camFollow;
 
   return ev;
 }

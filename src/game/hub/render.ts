@@ -25,11 +25,14 @@ export function renderHub(
   const camX = hub.cam.x - centerSx;
   const camY = hub.cam.y - centerSy;
 
-  // 1. Sfondo generale del diorama (atmosfera calda e accogliente da cameretta/nursery)
-  drawHubBackground(ctx);
+  // 1. Sfondo fiabesco luminoso con cielo, nuvole animate, mongolfiera e raggi solari
+  drawHubBackground(ctx, hub.t);
 
   // 2. Disegno della pavimentazione base con spessore 3D del diorama (pedistallo in legno, cotto, prato, parquet)
   drawGroundTiles(ctx, art, camX, camY, hub.t);
+
+  // 2b. Pareti a L della stanza (Parete Nord-Ovest e Parete Nord-Est con boiserie, finestre ad arco e quadri)
+  drawHubWalls(ctx, art, camX, camY, hub.t);
 
   // 3. Raccolta di tutti gli oggetti tridimensionali per l'ordinamento Y-sorting
   const items: Renderable[] = [];
@@ -408,14 +411,770 @@ function drawHubPillBadge(
   ctx.restore();
 }
 
-/** Sfondo caldo e sfumato da camera/nursery con morbida vignettatura. */
-function drawHubBackground(ctx: CanvasRenderingContext2D) {
-  const bg = ctx.createRadialGradient(VIEW_W / 2, VIEW_H / 2, 80, VIEW_W / 2, VIEW_H / 2, VIEW_W * 0.85);
-  bg.addColorStop(0, "#fffbf5");
-  bg.addColorStop(0.55, "#faeedd");
-  bg.addColorStop(1, "#ebd1b0");
-  ctx.fillStyle = bg;
+/**
+ * Sfondo fiabesco, luminoso e dinamico per il diorama:
+ * Cielo mattutino sfumato con morbide nuvole animate, raggi di luce dorata,
+ * mongolfiera pastello all'orizzonte e particelle scintillanti di borotalco.
+ */
+function drawHubBackground(ctx: CanvasRenderingContext2D, t: number) {
+  // 1. Gradiente atmosferico cielo mattutino sereno & luce calda della nursery
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+  skyGrad.addColorStop(0, "#bae6fd");     // Azzurro pastello cielo sereno
+  skyGrad.addColorStop(0.35, "#e0f2fe");  // Celeste chiaro luminoso
+  skyGrad.addColorStop(0.62, "#fef3c7");  // Bagliore dorato caldo all'orizzonte
+  skyGrad.addColorStop(0.85, "#fed7aa");  // Pesca ambrata calda
+  skyGrad.addColorStop(1, "#faebd7");     // Base morbida e accogliente
+  ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  // 2. Raggi di sole morbidi (God Rays) dall'angolo superiore sinistro
+  ctx.save();
+  const sunRays = ctx.createRadialGradient(80, -40, 40, 320, 260, 680);
+  sunRays.addColorStop(0, "rgba(255, 250, 220, 0.22)");
+  sunRays.addColorStop(0.4, "rgba(255, 245, 200, 0.08)");
+  sunRays.addColorStop(1, "rgba(255, 245, 200, 0)");
+  ctx.fillStyle = sunRays;
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  ctx.restore();
+
+  // 3. Nuvole soffici animate in parallasse orizzontale
+  const clouds = [
+    { baseY: 55, speed: 7, scale: 0.95, offset: 60, alpha: 0.88 },
+    { baseY: 110, speed: 12, scale: 1.25, offset: 380, alpha: 0.95 },
+    { baseY: 40, speed: 5, scale: 0.75, offset: 740, alpha: 0.82 },
+    { baseY: 135, speed: 10, scale: 1.1, offset: 1020, alpha: 0.9 },
+  ];
+
+  for (const c of clouds) {
+    const loopW = VIEW_W + 320;
+    const cx = ((t * c.speed + c.offset) % loopW) - 160;
+    const cy = c.baseY + Math.sin(t * 0.8 + c.offset) * 3;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(c.scale, c.scale);
+    ctx.globalAlpha = c.alpha;
+
+    // Ombra soffusa della nuvoletta
+    ctx.fillStyle = "rgba(224, 231, 255, 0.35)";
+    ctx.beginPath();
+    ctx.ellipse(0, 14, 58, 22, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Corpo nuvola con lobi sovrapposti soffici e bianchi
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(0, -6, 26, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(-26, 4, 20, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(26, 4, 22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(0, 8, 44, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Riflesso dorato solare sul bordo superiore della nuvola
+    ctx.fillStyle = "rgba(254, 240, 138, 0.45)";
+    ctx.beginPath();
+    ctx.arc(-4, -14, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // 4. Mongolfiera pastello lontana da fiaba che fluttua all'orizzonte
+  const balloonX = VIEW_W - 140 + Math.sin(t * 0.4) * 12;
+  const balloonY = 95 + Math.sin(t * 1.2) * 6;
+  ctx.save();
+  ctx.translate(balloonX, balloonY);
+  ctx.scale(0.85, 0.85);
+
+  // Pallone a strisce pastello (rosa, giallo, celeste)
+  const bGrad = ctx.createLinearGradient(-16, -26, 16, 10);
+  bGrad.addColorStop(0, "#f472b6");
+  bGrad.addColorStop(0.5, "#fde047");
+  bGrad.addColorStop(1, "#38bdf8");
+  ctx.fillStyle = bGrad;
+  ctx.beginPath();
+  ctx.ellipse(0, -10, 18, 22, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Riflesso lucido sul pallone
+  ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
+  ctx.beginPath();
+  ctx.ellipse(-6, -16, 7, 12, -0.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Corde e cestino in vimini
+  ctx.strokeStyle = "rgba(120, 53, 15, 0.6)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-6, 10);
+  ctx.lineTo(-4, 18);
+  ctx.moveTo(6, 10);
+  ctx.lineTo(4, 18);
+  ctx.stroke();
+
+  // Cestino
+  ctx.fillStyle = "#b45309";
+  ctx.fillRect(-5, 18, 10, 7);
+  ctx.restore();
+
+  // 5. Particelle magiche fluttuanti (stelline ⭐ e sfere di borotalco luminose)
+  for (let i = 0; i < 9; i++) {
+    const px = ((i * 149 + t * 14) % (VIEW_W + 60)) - 30;
+    const py = 50 + ((i * 73 + t * 9) % (VIEW_H * 0.75));
+    const sparkle = (Math.sin(t * 3.5 + i * 1.7) + 1) * 0.5;
+
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.globalAlpha = 0.25 + sparkle * 0.55;
+
+    if (i % 2 === 0) {
+      // Stellina a 4 punte
+      const size = 3 + sparkle * 2.5;
+      ctx.fillStyle = "#facc15";
+      ctx.beginPath();
+      ctx.moveTo(0, -size);
+      ctx.quadraticCurveTo(0, 0, size, 0);
+      ctx.quadraticCurveTo(0, 0, 0, size);
+      ctx.quadraticCurveTo(0, 0, -size, 0);
+      ctx.quadraticCurveTo(0, 0, 0, -size);
+      ctx.fill();
+    } else {
+      // Sfera morbida di borotalco
+      ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+      ctx.beginPath();
+      ctx.arc(0, 0, 2.5 + sparkle * 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // 6. Grande ombra d'atmosfera sotto il basamento del diorama (isola galleggiante)
+  const islandShadow = ctx.createRadialGradient(
+    VIEW_W / 2,
+    VIEW_H * 0.78,
+    60,
+    VIEW_W / 2,
+    VIEW_H * 0.82,
+    VIEW_W * 0.55,
+  );
+  islandShadow.addColorStop(0, "rgba(52, 28, 12, 0.2)");
+  islandShadow.addColorStop(0.5, "rgba(52, 28, 12, 0.08)");
+  islandShadow.addColorStop(1, "rgba(52, 28, 12, 0)");
+  ctx.fillStyle = islandShadow;
+  ctx.fillRect(0, VIEW_H * 0.45, VIEW_W, VIEW_H * 0.55);
+}
+
+/** Disegna una finestra ad arco con tendine arricciate, vista sul cielo azzurro e fioriera. */
+function drawArchedWallWindow(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  curtainColor: "yellow" | "blue",
+) {
+  const w = 46;
+  const h = 60;
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Ombra della finestra sul muro
+  ctx.fillStyle = "rgba(45, 20, 10, 0.18)";
+  ctx.beginPath();
+  ctx.roundRect(-w / 2 - 2, -h / 2 - 2, w + 4, h + 4, [18, 18, 2, 2]);
+  ctx.fill();
+
+  // Cornice in legno bianco modanato
+  ctx.fillStyle = "#ffffff";
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(-w / 2, -h / 2, w, h, [18, 18, 2, 2]);
+  ctx.fill();
+  ctx.stroke();
+
+  // Vetro con cielo azzurro sereno e nuvoletta all'esterno
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8, [14, 14, 2, 2]);
+  ctx.clip();
+
+  const glassGrad = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+  glassGrad.addColorStop(0, "#38bdf8");
+  glassGrad.addColorStop(0.65, "#bae6fd");
+  glassGrad.addColorStop(1, "#86efac");
+  ctx.fillStyle = glassGrad;
+  ctx.fillRect(-w / 2, -h / 2, w, h);
+
+  // Nuvoletta fuori dalla finestra
+  ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+  ctx.beginPath();
+  ctx.arc(-4, -12, 8, 0, Math.PI * 2);
+  ctx.arc(6, -10, 6, 0, Math.PI * 2);
+  ctx.arc(12, -8, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Riflesso solare obliquo sul vetro
+  ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+  ctx.beginPath();
+  ctx.moveTo(-w / 2, -h / 2 + 10);
+  ctx.lineTo(-w / 2 + 16, -h / 2);
+  ctx.lineTo(-w / 2 + 28, -h / 2);
+  ctx.lineTo(-w / 2, -h / 2 + 28);
+  ctx.closePath();
+  ctx.fill();
+
+  // Crociera in legno bianco (muntin bars)
+  ctx.strokeStyle = "#f8fafc";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, -h / 2 + 4);
+  ctx.lineTo(0, h / 2 - 4);
+  ctx.moveTo(-w / 2 + 4, 0);
+  ctx.lineTo(w / 2 - 4, 0);
+  ctx.stroke();
+
+  ctx.restore();
+
+  // Tendine laterali con fiocchetto
+  const curtainC = curtainColor === "yellow" ? "#fde047" : "#93c5fd";
+  const drapeC = curtainColor === "yellow" ? "#facc15" : "#60a5fa";
+
+  // Tendina sinistra
+  ctx.fillStyle = curtainC;
+  ctx.beginPath();
+  ctx.moveTo(-w / 2 + 3, -h / 2 + 6);
+  ctx.quadraticCurveTo(-w / 2 + 14, -h / 2 + 12, -w / 2 + 5, h / 2 - 6);
+  ctx.lineTo(-w / 2 + 3, h / 2 - 6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = drapeC;
+  ctx.fillRect(-w / 2 + 3, 2, 8, 3);
+
+  // Tendina destra
+  ctx.fillStyle = curtainC;
+  ctx.beginPath();
+  ctx.moveTo(w / 2 - 3, -h / 2 + 6);
+  ctx.quadraticCurveTo(w / 2 - 14, -h / 2 + 12, w / 2 - 5, h / 2 - 6);
+  ctx.lineTo(w / 2 - 3, h / 2 - 6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = drapeC;
+  ctx.fillRect(w / 2 - 11, 2, 8, 3);
+
+  // Davanzale in legno
+  ctx.fillStyle = "#f1f5f9";
+  ctx.fillRect(-w / 2 - 4, h / 2 - 2, w + 8, 5);
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(-w / 2 - 4, h / 2 - 2, w + 8, 5);
+
+  // Fioriera in legno con fiorellini colorati sul davanzale
+  ctx.fillStyle = "#b45309";
+  ctx.fillRect(-w / 2, h / 2 + 3, w, 6);
+  ctx.fillStyle = "#4ade80"; // Foglioline verdi
+  for (let fx = -w / 2 + 4; fx <= w / 2 - 4; fx += 8) {
+    ctx.beginPath();
+    ctx.arc(fx, h / 2 + 3, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Fiorellini pastello
+  const flowerCols = ["#f472b6", "#fde047", "#ffffff", "#f472b6", "#60a5fa"];
+  flowerCols.forEach((fc, idx) => {
+    ctx.fillStyle = fc;
+    ctx.beginPath();
+    ctx.arc(-w / 2 + 6 + idx * 8, h / 2 + 2, 2, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.restore();
+}
+
+/** Applique decorativa da parete in ottone con alone caldo. */
+function drawWallSconce(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Alone luminoso caldo dell'applique
+  const glow = ctx.createRadialGradient(0, 0, 1, 0, 0, 22);
+  glow.addColorStop(0, "rgba(254, 240, 138, 0.45)");
+  glow.addColorStop(0.5, "rgba(253, 224, 71, 0.15)");
+  glow.addColorStop(1, "rgba(253, 224, 71, 0)");
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(0, 0, 22, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Supporto applique in ottone
+  ctx.fillStyle = "#b45309";
+  ctx.fillRect(-2.5, -2, 5, 8);
+  ctx.fillStyle = "#d97706";
+  ctx.beginPath();
+  ctx.arc(0, 6, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Paralume a campana in vetro opalino
+  ctx.fillStyle = "#fef9c3";
+  ctx.beginPath();
+  ctx.ellipse(0, -3, 5, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#facc15";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/** Quadretto con cornice dorata appeso alla parete. */
+function drawWallPainting(ctx: CanvasRenderingContext2D, x: number, y: number, icon: string) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Ombra del quadretto
+  ctx.fillStyle = "rgba(45, 20, 10, 0.2)";
+  ctx.fillRect(-15, -15, 30, 30);
+
+  // Cornice in legno noce con filo dorato
+  ctx.fillStyle = "#78350f";
+  ctx.fillRect(-14, -14, 28, 28);
+  ctx.strokeStyle = "#f59e0b";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(-12, -12, 24, 24);
+
+  // Tela panna
+  ctx.fillStyle = "#fffbeb";
+  ctx.fillRect(-10, -10, 20, 20);
+
+  // Icona
+  ctx.font = "13px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(icon, 0, 1);
+
+  // Chiodo e cordino
+  ctx.strokeStyle = "#b45309";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, -18);
+  ctx.lineTo(-8, -14);
+  ctx.moveTo(0, -18);
+  ctx.lineTo(8, -14);
+  ctx.stroke();
+  ctx.fillStyle = "#d97706";
+  ctx.beginPath();
+  ctx.arc(0, -18, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/** Orologio da parete a cucù in legno con pendolo oscillante. */
+function drawWallCuckooClock(ctx: CanvasRenderingContext2D, x: number, y: number, t: number) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Ombra
+  ctx.fillStyle = "rgba(45, 20, 10, 0.2)";
+  ctx.fillRect(-13, -15, 26, 30);
+
+  // Casetta dell'orologio
+  ctx.fillStyle = "#92400e";
+  ctx.fillRect(-12, -14, 24, 28);
+
+  // Tetto a capanna
+  ctx.fillStyle = "#78350f";
+  ctx.beginPath();
+  ctx.moveTo(-16, -13);
+  ctx.lineTo(0, -23);
+  ctx.lineTo(16, -13);
+  ctx.closePath();
+  ctx.fill();
+
+  // Quadrante rotondo
+  ctx.fillStyle = "#fffbeb";
+  ctx.beginPath();
+  ctx.arc(0, 0, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#451a03";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Lancette
+  ctx.strokeStyle = "#1c1917";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(0, -5);
+  ctx.moveTo(0, 0);
+  ctx.lineTo(4, 0);
+  ctx.stroke();
+
+  // Pendolo oscillante
+  const pendAngle = Math.sin(t * 3.2) * 0.22;
+  ctx.save();
+  ctx.translate(0, 14);
+  ctx.rotate(pendAngle);
+  ctx.strokeStyle = "#d97706";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(0, 10);
+  ctx.stroke();
+  ctx.fillStyle = "#f59e0b";
+  ctx.beginPath();
+  ctx.arc(0, 10, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
+}
+
+/**
+ * Renderizza le due pareti a L della stanza (Parete Nord-Ovest e Parete Nord-Est)
+ * con boiserie in legno caldo, carta da parati pastello, modanatura superiore con spessore 3D,
+ * finestre ad arco panoramiche, applique dorate luminose e quadretti decorativi.
+ */
+function drawHubWalls(
+  ctx: CanvasRenderingContext2D,
+  _art: Art,
+  camX: number,
+  camY: number,
+  t: number,
+) {
+  // Punti geometrici della base sul pavimento perfettamente a filo con le piastrelle del diorama
+  const apexTile = worldToScreen(3.5, 3.5, 0, camX, camY);
+  const apexX = apexTile.sx;
+  const apexY = apexTile.sy;
+
+  const westTile = worldToScreen(3.5, 20.5, 0, camX, camY);
+  const westX = westTile.sx;
+  const westY = westTile.sy;
+
+  const eastTile = worldToScreen(20.5, 3.5, 0, camX, camY);
+  const eastX = eastTile.sx;
+  const eastY = eastTile.sy;
+
+  const wallH = 108; // Altezza verticale elegante che incornicia i portali senza coprire l'interfaccia
+  const wallThick = 12; // Spessore 3D del bordo superiore
+
+  // -------------------------------------------------------------
+  // 1. SPESSORE SUPERIORE E FIANCHI ESTERNI DEI MURI (Spessore 3D)
+  // -------------------------------------------------------------
+  // Faccia superiore della parete Nord-Ovest (bordo cornice)
+  ctx.fillStyle = "#fef3c7";
+  ctx.beginPath();
+  ctx.moveTo(westX, westY - wallH);
+  ctx.lineTo(westX - wallThick, westY - wallH - wallThick * 0.5);
+  ctx.lineTo(apexX, apexY - wallH - wallThick);
+  ctx.lineTo(apexX, apexY - wallH);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#d97706";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Faccia superiore della parete Nord-Est (bordo cornice in ombra)
+  ctx.fillStyle = "#fde68a";
+  ctx.beginPath();
+  ctx.moveTo(apexX, apexY - wallH);
+  ctx.lineTo(apexX, apexY - wallH - wallThick);
+  ctx.lineTo(eastX + wallThick, eastY - wallH - wallThick * 0.5);
+  ctx.lineTo(eastX, eastY - wallH);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#b45309";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Fianco esterno a Ovest (sezione della parete)
+  ctx.fillStyle = "#78350f";
+  ctx.beginPath();
+  ctx.moveTo(westX, westY - wallH);
+  ctx.lineTo(westX - wallThick, westY - wallH - wallThick * 0.5);
+  ctx.lineTo(westX - wallThick, westY);
+  ctx.lineTo(westX, westY);
+  ctx.closePath();
+  ctx.fill();
+
+  // Fianco esterno a Est (sezione della parete)
+  ctx.fillStyle = "#592b0c";
+  ctx.beginPath();
+  ctx.moveTo(eastX, eastY - wallH);
+  ctx.lineTo(eastX + wallThick, eastY - wallH - wallThick * 0.5);
+  ctx.lineTo(eastX + wallThick, eastY);
+  ctx.lineTo(eastX, eastY);
+  ctx.closePath();
+  ctx.fill();
+
+  // -------------------------------------------------------------
+  // 2. PARETE NORD-OVEST (Sinistra, esposta al sole caldo del mattino)
+  // -------------------------------------------------------------
+  ctx.save();
+  // Maschera della parete NO
+  ctx.beginPath();
+  ctx.moveTo(westX, westY - wallH);
+  ctx.lineTo(apexX, apexY - wallH);
+  ctx.lineTo(apexX, apexY);
+  ctx.lineTo(westX, westY);
+  ctx.closePath();
+  ctx.clip();
+
+  // Sfondo carta da parati calda crema / vaniglia
+  const wallGradNO = ctx.createLinearGradient(apexX, apexY - wallH, westX, westY);
+  wallGradNO.addColorStop(0, "#fffdfa");
+  wallGradNO.addColorStop(0.5, "#fff8eb");
+  wallGradNO.addColorStop(1, "#fef3c7");
+  ctx.fillStyle = wallGradNO;
+  ctx.fillRect(westX - 20, apexY - wallH - 10, apexX - westX + 40, westY - apexY + wallH + 20);
+
+  // Strisce verticali delicate della carta da parati
+  ctx.fillStyle = "rgba(217, 119, 6, 0.04)";
+  for (let x = westX; x <= apexX; x += 18) {
+    ctx.fillRect(x, apexY - wallH - 20, 8, westY - apexY + wallH + 40);
+  }
+
+  // Boiserie in legno caldo nella metà inferiore (altezza 40px dal suolo)
+  const boiH = 40;
+  ctx.fillStyle = "#fde68a";
+  ctx.beginPath();
+  ctx.moveTo(westX, westY);
+  ctx.lineTo(apexX, apexY);
+  ctx.lineTo(apexX, apexY - boiH);
+  ctx.lineTo(westX, westY - boiH);
+  ctx.closePath();
+  ctx.fill();
+
+  // Pannelli e doghe verticali della boiserie
+  for (let step = 0; step < 16; step++) {
+    const tSeg = step / 16;
+    const px = apexX + (westX - apexX) * tSeg;
+    const py = apexY + (westY - apexY) * tSeg;
+
+    ctx.strokeStyle = "rgba(180, 83, 9, 0.35)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(px, py - boiH);
+    ctx.stroke();
+
+    if (step % 2 === 0 && step < 15) {
+      const pNextX = apexX + (westX - apexX) * ((step + 1) / 16);
+      ctx.strokeStyle = "rgba(245, 158, 11, 0.65)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(px + 4, py - boiH + 8, (pNextX - px) - 8, boiH - 16);
+    }
+  }
+
+  // Cimasa modanata divisoria (chair rail) tra carta da parati e boiserie
+  ctx.strokeStyle = "#b45309";
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.moveTo(westX, westY - boiH);
+  ctx.lineTo(apexX, apexY - boiH);
+  ctx.stroke();
+  ctx.strokeStyle = "#fef08a";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(westX, westY - boiH - 1.5);
+  ctx.lineTo(apexX, apexY - boiH - 1.5);
+  ctx.stroke();
+
+  // Battiscopa in legno scuro noce lungo il pavimento
+  ctx.fillStyle = "#78350f";
+  ctx.beginPath();
+  ctx.moveTo(westX, westY);
+  ctx.lineTo(apexX, apexY);
+  ctx.lineTo(apexX, apexY - 8);
+  ctx.lineTo(westX, westY - 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#d97706";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(westX, westY - 8);
+  ctx.lineTo(apexX, apexY - 8);
+  ctx.stroke();
+
+  // Cornice superiore modanata in gesso bianco
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.moveTo(westX, westY - wallH);
+  ctx.lineTo(apexX, apexY - wallH);
+  ctx.lineTo(apexX, apexY - wallH + 10);
+  ctx.lineTo(westX, westY - wallH + 10);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "rgba(217, 119, 6, 0.4)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.restore();
+
+  // -------------------------------------------------------------
+  // 3. PARETE NORD-EST (Destra, in luce d'ambiente più morbida)
+  // -------------------------------------------------------------
+  ctx.save();
+  // Maschera della parete NE
+  ctx.beginPath();
+  ctx.moveTo(apexX, apexY - wallH);
+  ctx.lineTo(eastX, eastY - wallH);
+  ctx.lineTo(eastX, eastY);
+  ctx.lineTo(apexX, apexY);
+  ctx.closePath();
+  ctx.clip();
+
+  // Sfondo carta da parati calda crema / latte
+  const wallGradNE = ctx.createLinearGradient(apexX, apexY - wallH, eastX, eastY);
+  wallGradNE.addColorStop(0, "#f8ebd9");
+  wallGradNE.addColorStop(0.5, "#f3dfc6");
+  wallGradNE.addColorStop(1, "#ebd1b0");
+  ctx.fillStyle = wallGradNE;
+  ctx.fillRect(apexX - 20, apexY - wallH - 10, eastX - apexX + 40, eastY - apexY + wallH + 20);
+
+  // Strisce verticali delicate
+  ctx.fillStyle = "rgba(146, 64, 14, 0.04)";
+  for (let x = apexX; x <= eastX; x += 18) {
+    ctx.fillRect(x, apexY - wallH - 20, 8, eastY - apexY + wallH + 40);
+  }
+
+  // Boiserie in legno nella metà inferiore
+  ctx.fillStyle = "#f59e0b";
+  ctx.beginPath();
+  ctx.moveTo(apexX, apexY);
+  ctx.lineTo(eastX, eastY);
+  ctx.lineTo(eastX, eastY - boiH);
+  ctx.lineTo(apexX, apexY - boiH);
+  ctx.closePath();
+  ctx.fill();
+
+  // Pannelli e doghe verticali della parete destra
+  for (let step = 0; step < 16; step++) {
+    const tSeg = step / 16;
+    const px = apexX + (eastX - apexX) * tSeg;
+    const py = apexY + (eastY - apexY) * tSeg;
+
+    ctx.strokeStyle = "rgba(146, 64, 14, 0.35)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(px, py - boiH);
+    ctx.stroke();
+
+    if (step % 2 === 0 && step < 15) {
+      const pNextX = apexX + (eastX - apexX) * ((step + 1) / 16);
+      ctx.strokeStyle = "rgba(217, 119, 6, 0.65)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(px + 4, py - boiH + 8, (pNextX - px) - 8, boiH - 16);
+    }
+  }
+
+  // Cimasa divisoria (chair rail) parete destra
+  ctx.strokeStyle = "#92400e";
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.moveTo(apexX, apexY - boiH);
+  ctx.lineTo(eastX, eastY - boiH);
+  ctx.stroke();
+  ctx.strokeStyle = "#fef3c7";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(apexX, apexY - boiH - 1.5);
+  ctx.lineTo(eastX, eastY - boiH - 1.5);
+  ctx.stroke();
+
+  // Battiscopa parete destra
+  ctx.fillStyle = "#592b0c";
+  ctx.beginPath();
+  ctx.moveTo(apexX, apexY);
+  ctx.lineTo(eastX, eastY);
+  ctx.lineTo(eastX, eastY - 8);
+  ctx.lineTo(apexX, apexY - 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#b45309";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(apexX, apexY - 8);
+  ctx.lineTo(eastX, eastY - 8);
+  ctx.stroke();
+
+  // Cornice superiore modanata parete destra
+  ctx.fillStyle = "#f8fafc";
+  ctx.beginPath();
+  ctx.moveTo(apexX, apexY - wallH);
+  ctx.lineTo(eastX, eastY - wallH);
+  ctx.lineTo(eastX, eastY - wallH + 10);
+  ctx.lineTo(apexX, apexY - wallH + 10);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "rgba(180, 83, 9, 0.4)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.restore();
+
+  // -------------------------------------------------------------
+  // 4. OMBRA DELL'ANGOLO INTERNO AD L (Spigolo verticale centrale)
+  // -------------------------------------------------------------
+  ctx.save();
+  const cornerShadow = ctx.createLinearGradient(apexX - 24, 0, apexX + 24, 0);
+  cornerShadow.addColorStop(0, "rgba(45, 20, 10, 0)");
+  cornerShadow.addColorStop(0.38, "rgba(45, 20, 10, 0.22)");
+  cornerShadow.addColorStop(0.5, "rgba(45, 20, 10, 0.45)");
+  cornerShadow.addColorStop(0.62, "rgba(45, 20, 10, 0.22)");
+  cornerShadow.addColorStop(1, "rgba(45, 20, 10, 0)");
+  ctx.fillStyle = cornerShadow;
+  ctx.fillRect(apexX - 24, apexY - wallH, 48, wallH);
+  ctx.restore();
+
+  // -------------------------------------------------------------
+  // 5. DETTAGLI ARCHITETTONICI INTEGRATI NELLE PARETI
+  // -------------------------------------------------------------
+  // Parete Nord-Ovest:
+  // - Quadretto dorato tra Apex e Salotto
+  const pStar = worldToScreen(3.5, 6.0, 0, camX, camY);
+  drawWallPainting(ctx, pStar.sx, pStar.sy - 54, "⭐");
+
+  // - Finestra panoramica 1 tra Salotto e Cucina
+  const pWin1 = worldToScreen(3.5, 11.0, 0, camX, camY);
+  drawArchedWallWindow(ctx, pWin1.sx, pWin1.sy - 52, "yellow");
+
+  // - Finestra panoramica 2 tra Cucina e Lavanderia
+  const pWin2 = worldToScreen(3.5, 16.0, 0, camX, camY);
+  drawArchedWallWindow(ctx, pWin2.sx, pWin2.sy - 52, "blue");
+
+  // - Applique luminose dorate lungo la parete NO
+  const pSc1 = worldToScreen(3.5, 8.5, 0, camX, camY);
+  drawWallSconce(ctx, pSc1.sx + 4, pSc1.sy - 66);
+  const pSc2 = worldToScreen(3.5, 13.5, 0, camX, camY);
+  drawWallSconce(ctx, pSc2.sx + 4, pSc2.sy - 66);
+
+  // Parete Nord-Est:
+  // - Orologio a cucù con pendolo tra Apex e Corridoio
+  const pClock = worldToScreen(6.0, 3.5, 0, camX, camY);
+  drawWallCuckooClock(ctx, pClock.sx, pClock.sy - 54, t);
+
+  // - Quadretto con corona reale tra Corridoio e Bagno
+  const pCrown = worldToScreen(10.0, 3.5, 0, camX, camY);
+  drawWallPainting(ctx, pCrown.sx, pCrown.sy - 54, "👑");
+
+  // - Quadretto con orsetto tra Bagno e Cameretta
+  const pTeddy = worldToScreen(13.0, 3.5, 0, camX, camY);
+  drawWallPainting(ctx, pTeddy.sx, pTeddy.sy - 54, "🧸");
+
+  // - Finestra panoramica 3 tra Cameretta e terrazzo
+  const pWin3 = worldToScreen(17.5, 3.5, 0, camX, camY);
+  drawArchedWallWindow(ctx, pWin3.sx, pWin3.sy - 52, "yellow");
+
+  // - Applique luminose dorate lungo la parete NE
+  const pSc3 = worldToScreen(8.5, 3.5, 0, camX, camY);
+  drawWallSconce(ctx, pSc3.sx - 4, pSc3.sy - 66);
+  const pSc4 = worldToScreen(14.5, 3.5, 0, camX, camY);
+  drawWallSconce(ctx, pSc4.sx - 4, pSc4.sy - 66);
 }
 
 /** Pavimentazione ricca: piedistallo 3D del diorama, cotto caldo, prato smeraldo, parquet e marmo. */
@@ -426,9 +1185,9 @@ function drawGroundTiles(
   camY: number,
   _t: number,
 ) {
-  const minX = 3;
+  const minX = 4;
   const maxX = 20;
-  const minY = 3;
+  const minY = 4;
   const maxY = 20;
 
   // 1. Spessore 3D volumetrico del basamento perimetrale in legno noce pregiato
@@ -539,20 +1298,19 @@ function drawGroundTiles(
     for (let y = minY; y <= maxY; y++) {
       const { sx, sy } = worldToScreen(x, y, 0, camX, camY);
 
-      // Distinzione delle aree della villa
+      // Distinzione armoniosa delle zone della villa
       const isCourtyard = Math.hypot(x - 11.5, y - 11.5) < 4.8;
       const isGarden = x >= 15 && y >= 10;
       const isTerrace = x >= 15 && y < 10;
-      const isBedroom = x >= 10 && y <= 6;
-      const isBathPlatform = x >= 9 && x <= 14 && y <= 4;
+      const isBathThreshold = (x === 11 || x === 12) && y === 4;
 
-      let topColor = "#fdedd6";
-      let borderColor = "#e3c79e";
+      let topColor = "#fae8d0";
+      let borderColor = "#dfc299";
       let tileImg: HTMLImageElement | null = null;
       const tiles = art.hub?.tiles;
 
-      if (isBathPlatform) {
-        topColor = (x + y) % 2 === 0 ? "#fdf2f8" : "#fce7f3"; // Marmo rosa del Bagno
+      if (isBathThreshold) {
+        topColor = (x + y) % 2 === 0 ? "#fdf2f8" : "#fce7f3"; // Marmo rosa della soglia del Bagno
         borderColor = "#fbcfe8";
         tileImg = tiles?.marble ?? null;
       } else if (isGarden) {
@@ -567,12 +1325,8 @@ function drawGroundTiles(
         topColor = (x + y) % 2 === 0 ? "#ffeed9" : "#fbe3c7"; // Cotto caldo fiorentino
         borderColor = "#e8c9a3";
         tileImg = tiles?.cotto ?? null;
-      } else if (isBedroom) {
-        topColor = (x + y) % 2 === 0 ? "#fed7aa" : "#fdba74"; // Parquet miele
-        borderColor = "#fb923c";
-        tileImg = tiles?.wood ?? null;
       } else {
-        // Parquet caldo della casa
+        // Parquet caldo miele della casa
         topColor = (x + y) % 2 === 0 ? "#fae8d0" : "#f3dcc0";
         borderColor = "#dfc299";
         tileImg = tiles?.wood ?? null;
