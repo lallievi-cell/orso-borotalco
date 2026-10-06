@@ -49,8 +49,8 @@ export function createNpcs(): NpcInfo[] {
     {
       id: "mamma",
       name: "MAMMA ORSA",
-      wx: 7.5,
-      wy: 10.5,
+      wx: 8.5,
+      wy: 8.5,
       radius: 1.5,
       color: "#f472b6",
       lines: [

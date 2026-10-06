@@ -54,9 +54,9 @@ export function createHub(save: SaveData, returnPortalIndex: number | null = nul
         rotation: 0,
       },
       trampoline: {
-        wx: 14.5,
-        wy: 10.5,
-        radius: 1.1,
+        wx: 16.5,
+        wy: 16.5,
+        radius: 1.2,
       },
       musicBox: {
         wx: 13.5,
