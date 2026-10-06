@@ -918,13 +918,30 @@ function drawCentralFountain(
 ) {
   const { sx, sy } = worldToScreen(wx, wy, 0, camX, camY);
 
-  // Ombra monumentale morbida a terra
-  drawSoftShadow(ctx, sx, sy + 6, 62, 28, {
+  // 1. Ombra della vasca circolare in marmo:
+  // L'impronta della base sul pavimento in cotto è centrata a (sx, sy - 8).
+  // Non sborda in avanti (elimina completamente l'effetto fluttuante/staccato da terra).
+  drawSoftShadow(ctx, sx, sy - 8, 54, 18, {
     tone: "warm",
     maxAlpha: 0.38,
     contactRatio: 0.58,
-    contactAlpha: 0.24,
+    contactAlpha: 0.28,
   });
+
+  // 2. Micro-occlusione di contatto marcata e stretta lungo il bordo inferiore della vasca
+  // che tocca terra a sy + 3: salda fisicamente la vasca in marmo alle mattonelle di cotto.
+  ctx.save();
+  ctx.translate(sx, sy + 3);
+  ctx.scale(1, 0.24);
+  const contactGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, 48);
+  contactGrad.addColorStop(0, "rgba(52, 28, 12, 0.55)");
+  contactGrad.addColorStop(0.65, "rgba(52, 28, 12, 0.25)");
+  contactGrad.addColorStop(1, "rgba(52, 28, 12, 0)");
+  ctx.fillStyle = contactGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, 48, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 
   const img = art.hub.fountain;
   const fw = 118;
@@ -960,13 +977,35 @@ function drawShopGazebo(
 ) {
   const { sx, sy } = worldToScreen(wx, wy, 0, camX, camY);
 
-  // Ombra diffusa morbida sotto il gazebo del Bazar
-  drawSoftShadow(ctx, sx, sy + 6, 56, 26, {
+  // 1. Ombra diffusa proiettata sotto il bancone in legno, centrata nell'area di appoggio (sx + 2, sy - 12)
+  // Non sborda MAI in avanti oltre i piedini anteriori sul pavimento!
+  drawSoftShadow(ctx, sx + 2, sy - 12, 44, 18, {
     tone: "warm",
-    maxAlpha: 0.36,
-    contactRatio: 0.52,
-    contactAlpha: 0.22,
+    maxAlpha: 0.38,
+    contactRatio: 0.55,
+    contactAlpha: 0.25,
   });
+
+  // 2. Ombre di contatto dedicate e nette sotto ciascuno dei 4 piedini in legno della bancarella:
+  // - Zampa anteriore destra (la più avanzata a destra): (sx + 20, sy + 5)
+  // - Zampa anteriore sinistra: (sx - 34, sy - 17)
+  // - Zampa laterale destra: (sx + 38, sy - 7)
+  // - Zampa posteriore sinistra: (sx - 17, sy - 29)
+  const legs = [
+    { x: sx + 20, y: sy + 5, rx: 11, ry: 5.5, alpha: 0.52 },
+    { x: sx - 34, y: sy - 17, rx: 10, ry: 5.0, alpha: 0.44 },
+    { x: sx + 38, y: sy - 7, rx: 10, ry: 5.0, alpha: 0.44 },
+    { x: sx - 17, y: sy - 29, rx: 8, ry: 4.0, alpha: 0.36 },
+  ];
+
+  for (const leg of legs) {
+    drawSoftShadow(ctx, leg.x, leg.y, leg.rx, leg.ry, {
+      tone: "warm",
+      maxAlpha: leg.alpha,
+      contactRatio: 0.68,
+      contactAlpha: leg.alpha * 0.75,
+    });
+  }
 
   const img = art.hub.bazar;
   const bw = 120;
@@ -994,12 +1033,20 @@ function drawCourtyardTrampoline(
 ) {
   const { sx, sy } = worldToScreen(wx, wy, 0, camX, camY);
 
-  // Ombra soffusa botanica ad alta fedeltà sotto il tappeto elastico (niente buchi neri sul prato!)
-  drawSoftShadow(ctx, sx, sy + 5, 42, 20, {
+  // Ombra soffusa botanica ad alta fedeltà sotto il tappeto elastico centrata sotto l'anello circolare:
+  drawSoftShadow(ctx, sx, sy - 6, 38, 16, {
     tone: "grass",
-    maxAlpha: 0.36,
-    contactRatio: 0.45,
-    contactAlpha: 0.2,
+    maxAlpha: 0.38,
+    contactRatio: 0.52,
+    contactAlpha: 0.22,
+  });
+
+  // Micro-occlusione di contatto per il piedino anteriore a terra (sx, sy + 3)
+  drawSoftShadow(ctx, sx, sy + 3, 12, 5, {
+    tone: "grass",
+    maxAlpha: 0.48,
+    contactRatio: 0.68,
+    contactAlpha: 0.32,
   });
 
   const img = art.hub.trampoline;
