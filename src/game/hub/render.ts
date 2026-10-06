@@ -523,6 +523,99 @@ function drawHubPillBadge(
 }
 
 /**
+ * Medaglione circolare compatto illustrato per i bambini:
+ * Sostituisce i vecchi cartelli di testo con un elegante stemma rotondo
+ * con la grande icona della stanza (padella, water, peluche...) e le stelline d'oro.
+ */
+function drawPortalMedallion(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  portal: PortalInfo,
+  art: Art,
+  t: number,
+) {
+  ctx.save();
+  const floatY = Math.sin(t * 3.5 + portal.index) * 2;
+  ctx.translate(x, y + floatY);
+
+  const r = 16; // Diametro 32px: compatto e pulito
+
+  // 1. Ombra soffusa a goccia del medaglione
+  ctx.shadowColor = "rgba(45, 20, 10, 0.28)";
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetY = 2.5;
+
+  // 2. Cerchio di base smaltato
+  const grad = ctx.createLinearGradient(0, -r, 0, r);
+  if (portal.locked) {
+    grad.addColorStop(0, "#f3f4f6");
+    grad.addColorStop(1, "#d1d5db");
+  } else {
+    grad.addColorStop(0, "#ffffff");
+    grad.addColorStop(1, "#fef3c7");
+  }
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Reset ombra
+  ctx.shadowColor = "transparent";
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+
+  // 3. Cornice dorata o metallica
+  ctx.strokeStyle = portal.locked ? "#9ca3af" : "#f59e0b";
+  ctx.lineWidth = 2.2;
+  ctx.stroke();
+
+  // Highlight superiore lucido
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(0, -1, r - 1.5, Math.PI * 0.8, Math.PI * 0.2, true);
+  ctx.stroke();
+
+  // 4. Icona della stanza grande, intuitiva e visiva per bambini
+  ctx.font = "18px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(portal.icon, 0, 1);
+
+  // 5. Stelline sopra il medaglione (se sbloccato)
+  if (!portal.locked) {
+    const starY = -r - 7;
+    const spacing = 10;
+    for (let s = -1; s <= 1; s++) {
+      const sx = s * spacing;
+      const got = (s + 1) < portal.stars;
+      if (got && art?.star) {
+        ctx.drawImage(art.star, sx - 5, starY - 5, 10, 10);
+      } else {
+        ctx.font = "8px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(got ? "⭐" : "▫️", sx, starY);
+      }
+    }
+
+    // Paperella d'oro se trovata
+    if (portal.duck && art?.goldduck) {
+      ctx.drawImage(art.goldduck, r - 5, -r - 3, 14, 14);
+    }
+  } else {
+    // Lucchetto in basso se bloccato
+    ctx.font = "13px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🔒", r - 5, r - 3);
+  }
+
+  ctx.restore();
+}
+
+/**
  * Sfondo fiabesco, luminoso e dinamico per il diorama:
  * Cielo mattutino sfumato con morbide nuvole animate, raggi di luce dorata,
  * mongolfiera pastello all'orizzonte e particelle scintillanti di borotalco.
@@ -1784,14 +1877,9 @@ function drawPortal(
     ctx.drawImage(art.toilet, tx, ty - th + bob, tw, th);
   }
 
-  // 2. Insegna cartoon 3D a pillola elegante per la stanza
-  const badgeY = sy - archH - 14;
-  drawHubPillBadge(ctx, sx, badgeY, portal.name, portal.icon, {
-    theme: portal.locked ? "locked" : "gold",
-    stars: portal.stars,
-    hasDuck: portal.duck,
-    art,
-  });
+  // 2. Medaglione circolare illustrato per la stanza (adatto a bimbi: zero scritte ingombranti!)
+  const badgeY = sy - archH - 10;
+  drawPortalMedallion(ctx, sx, badgeY, portal, art, t);
 
   if (portal.locked) {
     // Lucchetto d'ottone al centro dell'arco chiuso
@@ -1840,7 +1928,6 @@ function drawNpc(
       const w = h * (img.width / img.height);
       ctx.drawImage(img, -w / 2, -h, w, h);
     }
-    drawHubPillBadge(ctx, 0, -h - 18, "MAMMA ORSA", "🌸", { theme: "pink" });
   } else if (npc.id === "papa") {
     // 🧸 PAPÀ ORSO: Sprite 3D illustrato con gilet blu in lana e occhialetti da lettura
     const img = art.hub.papa;
@@ -1849,7 +1936,6 @@ function drawNpc(
       const w = h * (img.width / img.height);
       ctx.drawImage(img, -w / 2, -h, w, h);
     }
-    drawHubPillBadge(ctx, 0, -h - 18, "PAPÀ ORSO", "👓", { theme: "blue" });
   } else if (npc.id === "micio") {
     // 🐱 MICIO IL GATTO: Sprite 3D addormentato sul soffice cuscino rosa (art.pillow)
     if (art.pillow) {
@@ -1869,9 +1955,6 @@ function drawNpc(
     ctx.font = '800 13px "Fredoka", sans-serif';
     ctx.fillStyle = "rgba(168, 85, 247, 0.9)";
     ctx.fillText("Zzz...", 20, -44 + Math.sin(t * 2) * 3);
-    drawHubPillBadge(ctx, 0, -ch - 24, "MICIO IL GATTO", "🐾", { theme: "purple" });
-  } else {
-    drawHubPillBadge(ctx, 0, labelY, npc.name, "⭐", { theme: "gold" });
   }
 
   ctx.restore();
@@ -1984,10 +2067,6 @@ function drawShopGazebo(
     const bh = bw * (img.height / img.width);
     ctx.drawImage(img, sx - bw / 2, sy - bh + 6, bw, bh);
   }
-
-  // Insegna cartoon 3D a pillola elegante sopra il bazar
-  const tagY = sy - 116;
-  drawHubPillBadge(ctx, sx, tagY, "BAZAR", "🛍️", { theme: "gold" });
 }
 
 /** Trampolino elastico giocattolo 3D illustrato (art.hub.trampoline). */
@@ -2033,13 +2112,8 @@ function drawCourtyardTrampoline(
     dist < radius * 1.35 ||
     (dist < radius * 1.85 && (player.wz > 0.05 || Math.abs(player.vz) > 0.1));
 
-  if (!isInteracting) {
-    // Indicatore invitante prima di salirci sopra: elegante targhetta cartoon che fluttua
-    const arrowBob = Math.sin(t * 6) * 3;
-    drawHubPillBadge(ctx, sx, sy - 60 + arrowBob, "BOING!", "⬆️", { theme: "cyan" });
-  } else {
-    // Quando ci salti sopra: NESSUNA SCRITTA che copre l'orsetto!
-    // Solo un effetto cartoon di onda elastica dinamica sul tappeto
+  // Se l'orsetto ci salta sopra: effetto cartoon di onda elastica dinamica sul tappeto
+  if (isInteracting) {
     const ripple = (t * 4) % 1;
     ctx.strokeStyle = `rgba(56, 189, 248, ${0.75 * (1 - ripple)})`;
     ctx.lineWidth = 2.2;
@@ -2421,7 +2495,7 @@ function drawTapIndicator(
   ctx.fillText("🐾", sx, sy);
 }
 
-/** Pulsante fluttuante d'ingresso porta. */
+/** Fumetto circolare compatto con icona quando sei vicino alla porta. */
 function drawPortalPrompt(
   ctx: CanvasRenderingContext2D,
   portal: PortalInfo,
@@ -2431,24 +2505,33 @@ function drawPortalPrompt(
 ) {
   const { sx, sy } = worldToScreen(portal.wx, portal.wy, 0, camX, camY);
   const floatY = Math.sin(t * 6) * 3;
+  const btnY = sy - 96 + floatY;
 
-  const btnY = sy - 110 + floatY;
+  ctx.save();
+  ctx.translate(sx, btnY);
+  ctx.shadowColor = "rgba(0, 0, 0, 0.25)";
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetY = 2;
+
   ctx.fillStyle = portal.locked ? "#ef4444" : "#10b981";
   ctx.beginPath();
-  ctx.roundRect(sx - 52, btnY - 15, 104, 30, 15);
+  ctx.arc(0, 0, 16, 0, Math.PI * 2);
   ctx.fill();
+
+  ctx.shadowColor = "transparent";
   ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 2.5;
+  ctx.lineWidth = 2.2;
   ctx.stroke();
 
-  ctx.font = '800 13px "Fredoka", sans-serif';
+  ctx.font = "14px sans-serif";
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(portal.locked ? "🔒 CHIUSO" : "🚪 ENTRA!", sx, btnY + 1);
+  ctx.fillText(portal.locked ? "🔒" : "▶", 0, 0.5);
+  ctx.restore();
 }
 
-/** Pulsante fluttuante per parlare con gli amici o aprire il Bazar. */
+/** Fumetto circolare compatto con icona quando sei vicino a un amico o al Bazar. */
 function drawNpcPrompt(
   ctx: CanvasRenderingContext2D,
   npc: NpcInfo,
@@ -2458,25 +2541,31 @@ function drawNpcPrompt(
 ) {
   const { sx, sy } = worldToScreen(npc.wx, npc.wy, 0, camX, camY);
   const floatY = Math.sin(t * 6) * 3;
-
   const isShop = npc.id === "coniglio";
-  const btnY = (isShop ? sy - 110 : sy - 78) + floatY;
-  const btnW = isShop ? 116 : 92;
-  const btnH = 28;
+  const btnY = (isShop ? sy - 92 : sy - 84) + floatY;
+
+  ctx.save();
+  ctx.translate(sx, btnY);
+  ctx.shadowColor = "rgba(0, 0, 0, 0.25)";
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetY = 2;
 
   ctx.fillStyle = isShop ? "#f59e0b" : "#3b82f6";
   ctx.beginPath();
-  ctx.roundRect(sx - btnW / 2, btnY - btnH / 2, btnW, btnH, 14);
+  ctx.arc(0, 0, 16, 0, Math.PI * 2);
   ctx.fill();
+
+  ctx.shadowColor = "transparent";
   ctx.strokeStyle = "#ffffff";
   ctx.lineWidth = 2.2;
   ctx.stroke();
 
-  ctx.font = '800 12px "Fredoka", sans-serif';
+  ctx.font = "15px sans-serif";
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(isShop ? "🛍️ APRI BAZAR" : "💬 PARLA", sx, btnY + 1);
+  ctx.fillText(isShop ? "🛍️" : "💬", 0, 0.5);
+  ctx.restore();
 }
 
 /** Fumetto del dialogo in chiaro stampatello per Celeste. */
@@ -2939,10 +3028,14 @@ function drawBasketballHoop(
   }
   ctx.stroke();
 
-  // Badge cartoon fluttuante sopra il tabellone con punteggio
-  drawHubPillBadge(ctx, bbX, bbY - 18, `BASKET: ${hoop.score}`, "🏀", {
-    theme: hoop.score > 0 ? "gold" : "cyan",
-  });
+  // Se ci sono punti a canestro, mostra solo un numerino elegante sul tabellone
+  if (hoop.score > 0) {
+    ctx.font = '900 13px "Fredoka", sans-serif';
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`${hoop.score}`, bbX, bbY - 2);
+  }
 
   ctx.restore();
 }
@@ -3014,10 +3107,6 @@ function drawTelescope(
   ctx.beginPath();
   ctx.arc(16, -42, 3.5, 0, Math.PI * 2);
   ctx.fill();
-
-  // Targhetta fluttuante invitante
-  const bob = Math.sin(t * 5) * 2;
-  drawHubPillBadge(ctx, 0, -68 + bob, "PANORAMA", "🔭", { theme: "cyan" });
 
   ctx.restore();
 }

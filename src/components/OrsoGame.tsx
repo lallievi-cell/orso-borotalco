@@ -409,35 +409,35 @@ export function OrsoGame() {
           if (portal) {
             setHubAction({
               type: "portal",
-              label: portal.locked ? "STANZA CHIUSA 🔒" : `ENTRA IN ${portal.name} ▶`,
+              label: portal.locked ? "CHIUSO 🔒" : "GIOCA! ▶",
               icon: portal.icon,
               locked: portal.locked,
             });
           } else if (shop) {
             setHubAction({
               type: "shop",
-              label: "APRI IL BAZAR DELLE STELLINE",
+              label: "BAZAR! 🛍️",
               icon: "🛍️",
               locked: false,
             });
           } else if (npc) {
             setHubAction({
               type: "npc",
-              label: `PARLA CON ${npc.name}`,
-              icon: "💬",
+              label: npc.id === "micio" ? "MIAO! 🐾" : "CIAO! 💬",
+              icon: npc.id === "micio" ? "🐱" : "💬",
               locked: false,
             });
           } else if (fountain) {
             setHubAction({
               type: "npc",
-              label: "ESPRIMI UN DESIDERIO ALLA PAPERELLA",
+              label: "DESIDERIO! ✨",
               icon: "✨",
               locked: false,
             });
           } else if (telescope) {
             setHubAction({
               type: "npc",
-              label: "GUARDA DAL CANNOCCHIALE",
+              label: "GUARDA! 🔭",
               icon: "🔭",
               locked: false,
             });
@@ -978,14 +978,14 @@ export function OrsoGame() {
                   className="min-h-11 px-3.5 rounded-full bg-foam/95 text-cocoa shadow-md flex items-center gap-1.5 font-display text-xs sm:text-sm uppercase font-bold hover:scale-105 active:scale-95 transition-transform border border-cocoa/10"
                 >
                   <House className="h-4 w-4" />
-                  <span>TITOLO</span>
+                  <span>ESCI</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setRoomsModalOpen(true)}
                   className="min-h-11 px-3.5 rounded-full bg-foam/95 text-cocoa shadow-md flex items-center gap-1.5 font-display text-xs sm:text-sm uppercase font-bold hover:scale-105 active:scale-95 transition-transform border border-cocoa/10"
                 >
-                  <span>📋</span>
+                  <span>🚪</span>
                   <span>STANZE</span>
                 </button>
               </div>
@@ -1038,7 +1038,7 @@ export function OrsoGame() {
                 </button>
               ) : (
                 <div className="pointer-events-none rounded-full bg-cocoa/65 backdrop-blur-sm px-4 py-1.5 text-white font-display text-xs sm:text-sm uppercase font-bold tracking-wider shadow">
-                  👆 TOCCA DOVE VUOI ANDARE NEL CORTILE!
+                  🐾 TOCCA PER CAMMINARE
                 </div>
               )}
             </div>
