@@ -304,8 +304,17 @@ export function OrsoGame() {
         );
         b.hubTap = null;
 
-        if (hubEv.bounce) audio.bounce();
-        if (hubEv.kick) audio.bump();
+        if (hubEv.bounce || hubEv.ballTramp) audio.bounce();
+        if (hubEv.kick) {
+          if ((b.hub.toys.ball.combo || 0) > 1) {
+            audio.coin();
+          } else {
+            audio.jump();
+          }
+        }
+        if (hubEv.ballNpcPass) {
+          audio.speak(hubEv.ballNpcPass.line);
+        }
 
         if (interact) {
           const res = interactHub(b.hub, audio);

@@ -155,4 +155,65 @@ describe("Hub Engine and Simulation", () => {
     expect(hub.player.vz).toBeGreaterThan(5);
     expect(hub.player.wz).toBeGreaterThan(0);
   });
+
+  it("kicks beach ball, accumulating keepy-uppy combo, squish, and sparks", () => {
+    const save = emptySave();
+    const hub = createHub(save);
+
+    // Posiziona l'orsetto a contatto col pallone da spiaggia
+    const ball = hub.toys.ball;
+    hub.player.wx = ball.wx - 0.5;
+    hub.player.wy = ball.wy;
+    hub.player.wz = 0;
+
+    const ev = stepHub(hub, { dx: 1, dy: 0, interact: false }, 0.05);
+
+    expect(ev.kick).toBe(true);
+    expect(ball.vx).toBeGreaterThan(0);
+    expect(ball.vz).toBeGreaterThan(0);
+    expect(ball.squish).toBeGreaterThan(0.2);
+    expect(ball.combo).toBeGreaterThanOrEqual(1);
+    expect(ball.sparks.length).toBeGreaterThan(0);
+  });
+
+  it("super-bounces beach ball on trampoline with vertical boost", () => {
+    const save = emptySave();
+    const hub = createHub(save);
+
+    const tramp = hub.toys.trampoline;
+    const ball = hub.toys.ball;
+    ball.wx = tramp.wx;
+    ball.wy = tramp.wy;
+    ball.wz = 0;
+    ball.vz = -1;
+
+    const ev = stepHub(hub, { dx: 0, dy: 0, interact: false }, 0.03);
+
+    expect(ev.ballTramp).toBe(true);
+    expect(ball.vz).toBeGreaterThan(7.0);
+    expect(ball.squish).toBeGreaterThan(0.4);
+    expect(ball.combo).toBeGreaterThan(0);
+  });
+
+  it("triggers friendly NPC pass when ball rolls close to Papa Orso", () => {
+    const save = emptySave();
+    const hub = createHub(save);
+
+    // Trova Papà Orso
+    const papa = hub.npcs.find((n) => n.id === "papa")!;
+    expect(papa).toBeDefined();
+
+    const ball = hub.toys.ball;
+    ball.wx = papa.wx + 0.4;
+    ball.wy = papa.wy;
+    ball.lastKickBy = null;
+
+    const ev = stepHub(hub, { dx: 0, dy: 0, interact: false }, 0.03);
+
+    expect(ev.ballNpcPass).toBeDefined();
+    expect(ev.ballNpcPass?.npcId).toBe("papa");
+    expect(ball.vz).toBeGreaterThan(3.0);
+    expect(ball.combo).toBeGreaterThan(0);
+    expect(ball.lastKickBy).toBe("papa");
+  });
 });

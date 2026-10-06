@@ -22,7 +22,7 @@ export function createPortals(save: SaveData): PortalInfo[] {
   const portalConfigs: { wx: number; wy: number; flip: number }[] = [
     { wx: 5.0, wy: 8.5, flip: 1 }, // 0: Salotto (Muro NO, rivolto verso SE nel cortile)
     { wx: 5.0, wy: 13.5, flip: 1 }, // 1: Cucina (Muro NO, rivolto verso SE nel cortile)
-    { wx: 18.5, wy: 14.5, flip: -1 }, // 2: Giardino (Soglia giardino, rivolto verso SO)
+    { wx: 18.5, wy: 15.5, flip: -1 }, // 2: Giardino (Soglia giardino a sud-est, rivolto verso SO)
     { wx: 8.5, wy: 5.6, flip: -1 }, // 3: Corridoio (Muro NE, rivolto verso SO nel cortile)
     { wx: 5.0, wy: 18.5, flip: 1 }, // 4: Lavanderia (Muro NO, rivolto verso SE nel cortile)
     { wx: 14.5, wy: 5.6, flip: -1 }, // 5: Cameretta (Muro NE, rivolto verso SO nel cortile)
@@ -63,8 +63,8 @@ export function createNpcs(): NpcInfo[] {
     {
       id: "papa",
       name: "PAPÀ ORSO",
-      wx: 16.5,
-      wy: 12.5,
+      wx: 17.5,
+      wy: 11.5,
       radius: 1.5,
       color: "#60a5fa",
       lines: [
@@ -133,7 +133,7 @@ export function getMapColliders(): { circles: ColliderCircle[]; rects: ColliderR
       { x: 3.5, y: 19.5, r: 1.2 },
       // Amici NPC (impediscono compenetrazioni dello sprite ma lasciano raggio di dialogo)
       { x: 8.5, y: 8.5, r: 0.8 }, // Mamma Orsa
-      { x: 16.5, y: 12.5, r: 0.8 }, // Papà Orso
+      { x: 17.5, y: 11.5, r: 0.8 }, // Papà Orso
       { x: 14.5, y: 7.0, r: 0.65 }, // Micio il Gatto
     ],
     rects: [

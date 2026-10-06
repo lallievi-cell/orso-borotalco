@@ -25,6 +25,19 @@ export type NpcInfo = {
   color: string;
 };
 
+export type BallSpark = {
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  color: string;
+  size: number;
+  alpha: number;
+  rot: number;
+};
+
 export type ToyBall = {
   wx: number;
   wy: number;
@@ -34,6 +47,16 @@ export type ToyBall = {
   vz: number;
   radius: number;
   rotation: number;
+  rollAngleX: number;
+  rollAngleY: number;
+  squish: number;
+  squishVel: number;
+  combo: number;
+  bestCombo: number;
+  comboTimer: number;
+  comboPop: number;
+  lastKickBy: NpcKind | "player" | "tramp" | null;
+  sparks: BallSpark[];
 };
 
 export type HubToy = {

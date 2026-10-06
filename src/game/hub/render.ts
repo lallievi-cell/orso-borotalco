@@ -76,13 +76,22 @@ export function renderHub(
         camX,
         camY,
         hub.t,
+        hub.player,
+        hub.toys.trampoline.radius,
       ),
   });
 
   // Pallone da spiaggia rimbalzante
   const ball = hub.toys.ball;
+  const tramp = hub.toys.trampoline;
+  const distBallTramp = Math.hypot(ball.wx - tramp.wx, ball.wy - tramp.wy);
+  const isBallOnTramp = distBallTramp < tramp.radius * 1.35;
+  const ballDepth = isBallOnTramp
+    ? getDepth(tramp.wx, tramp.wy, 0) + 0.55 + ball.wz * 0.01
+    : getDepth(ball.wx, ball.wy, ball.wz);
+
   items.push({
-    depth: getDepth(ball.wx, ball.wy, ball.wz),
+    depth: ballDepth,
     draw: (c) => drawBeachBall(c, ball, camX, camY),
   });
 
@@ -135,7 +144,6 @@ export function renderHub(
 
   // Risoluzione intelligente profondità Z-index:
   // Se l'orsetto è sul trampolino o sta saltando sopra di esso, DEVE essere disegnato DAVANTI al trampolino!
-  const tramp = hub.toys.trampoline;
   const distTramp = Math.hypot(p.wx - tramp.wx, p.wy - tramp.wy);
   const isInteractingWithTrampoline =
     distTramp < tramp.radius * 1.35 ||
@@ -241,6 +249,160 @@ export function drawSoftShadow(
     ctx.beginPath();
     ctx.arc(0, 0, cr, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Disegna una targhetta / pill badge in stile cartoon 3D per porte, NPC e bazar.
+ * Dotata di ombra soffusa fluttuante, gradiente smaltato, bordo dorato o a tema,
+ * icona dedicata in cerchietto, testo chiaro in stampatello e stelline opzionali integrate.
+ */
+function drawHubPillBadge(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  title: string,
+  icon?: string,
+  options: {
+    theme?: "gold" | "pink" | "blue" | "purple" | "locked" | "cyan";
+    stars?: number;
+    hasDuck?: boolean;
+    art?: Art;
+    scale?: number;
+  } = {},
+) {
+  const { theme = "gold", stars, hasDuck, art, scale = 1 } = options;
+
+  ctx.save();
+  ctx.translate(x, y);
+  if (scale !== 1) ctx.scale(scale, scale);
+
+  ctx.font = '900 11.5px "Fredoka", "Nunito", sans-serif';
+  const textMetrics = ctx.measureText(title);
+  const textW = textMetrics.width;
+
+  const iconW = icon ? 22 : 0;
+  const paddingX = 13;
+  const pillW = Math.max(76, textW + iconW + paddingX * 2);
+  const pillH = 26;
+  const r = 13;
+
+  // 1. Ombra soffusa fluttuante della targhetta
+  ctx.shadowColor = "rgba(45, 20, 10, 0.22)";
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetY = 2.5;
+
+  // 2. Colori tema e gradiente sfumato morbido
+  let gradTop = "#ffffff";
+  let gradBottom = "#fffbeb";
+  let borderColor = "#f59e0b";
+  let textColor = "#451a03";
+  let iconBg = "rgba(254, 243, 199, 0.9)";
+
+  if (theme === "pink") {
+    gradBottom = "#fdf2f8";
+    borderColor = "#f472b6";
+    textColor = "#831843";
+    iconBg = "rgba(252, 231, 243, 0.95)";
+  } else if (theme === "blue") {
+    gradBottom = "#eff6ff";
+    borderColor = "#60a5fa";
+    textColor = "#1e3a8a";
+    iconBg = "rgba(219, 234, 254, 0.95)";
+  } else if (theme === "purple") {
+    gradBottom = "#faf5ff";
+    borderColor = "#c084fc";
+    textColor = "#581c87";
+    iconBg = "rgba(243, 232, 255, 0.95)";
+  } else if (theme === "cyan") {
+    gradTop = "#38bdf8";
+    gradBottom = "#0284c7";
+    borderColor = "#ffffff";
+    textColor = "#ffffff";
+    iconBg = "rgba(255, 255, 255, 0.25)";
+  } else if (theme === "locked") {
+    gradTop = "#f9fafb";
+    gradBottom = "#e5e7eb";
+    borderColor = "#9ca3af";
+    textColor = "#4b5563";
+    iconBg = "rgba(209, 213, 219, 0.95)";
+  }
+
+  const grad = ctx.createLinearGradient(0, -pillH / 2, 0, pillH / 2);
+  grad.addColorStop(0, gradTop);
+  grad.addColorStop(1, gradBottom);
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.roundRect(-pillW / 2, -pillH / 2, pillW, pillH, r);
+  ctx.fill();
+
+  // Reset ombra per il bordo e i testi
+  ctx.shadowColor = "transparent";
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+
+  // Bordo lucido
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+
+  // Highlight bianco superiore (effetto rilievo 3D smaltato)
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(-pillW / 2 + 1.5, -pillH / 2 + 1.5, pillW - 3, pillH / 2, [r, r, 0, 0]);
+  ctx.stroke();
+
+  // Icona circolare dedicata
+  let textStartX = -pillW / 2 + paddingX;
+  if (icon) {
+    const iconCx = -pillW / 2 + 14;
+    ctx.fillStyle = iconBg;
+    ctx.beginPath();
+    ctx.arc(iconCx, 0, 9.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(icon, iconCx, 0.5);
+
+    textStartX = iconCx + 13;
+  }
+
+  // Testo in stampatello ad alta leggibilità
+  ctx.font = '900 11.5px "Fredoka", "Nunito", sans-serif';
+  ctx.textAlign = icon ? "left" : "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = textColor;
+  ctx.fillText(title, icon ? textStartX : 0, 0.5);
+
+  // Stelline per i livelli delle stanze (archetto o pill sopra la targhetta)
+  if (stars !== undefined && theme !== "locked") {
+    const starY = -pillH / 2 - 9;
+    const starSpacing = 13;
+    const totalW = 2 * starSpacing;
+    const startX = -totalW / 2;
+
+    for (let s = 0; s < 3; s++) {
+      const sx = startX + s * starSpacing;
+      const got = s < stars;
+      if (got && art?.star) {
+        ctx.drawImage(art.star, sx - 6, starY - 6, 12, 12);
+      } else {
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(got ? "⭐" : "▫️", sx, starY);
+      }
+    }
+
+    if (hasDuck && art?.goldduck) {
+      ctx.drawImage(art.goldduck, pillW / 2 + 3, -11, 20, 20);
+    }
   }
 
   ctx.restore();
@@ -651,43 +813,16 @@ function drawPortal(
     ctx.drawImage(art.toilet, tx, ty - th + bob, tw, th);
   }
 
-  // 2. Insegna elegante in legno con Nome Stanza & Icona (sempre orizzontale e leggibile)
-  const badgeY = sy - archH - 10;
-  ctx.fillStyle = "#ffffff";
-  ctx.beginPath();
-  ctx.roundRect(sx - 48, badgeY - 13, 96, 26, 13);
-  ctx.fill();
-  ctx.strokeStyle = portal.locked ? "#9ca3af" : "#f59e0b";
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  // 2. Insegna cartoon 3D a pillola elegante per la stanza
+  const badgeY = sy - archH - 14;
+  drawHubPillBadge(ctx, sx, badgeY, portal.name, portal.icon, {
+    theme: portal.locked ? "locked" : "gold",
+    stars: portal.stars,
+    hasDuck: portal.duck,
+    art,
+  });
 
-  ctx.font = '800 11px "Fredoka", "Nunito", sans-serif';
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = "#451a03";
-  ctx.fillText(`${portal.icon} ${portal.name}`, sx, badgeY);
-
-  // 3. Stelline d'oro guadagnate
-  if (!portal.locked) {
-    const starsY = badgeY - 15;
-    for (let s = 0; s < 3; s++) {
-      const starX = sx - 16 + s * 16;
-      const got = s < portal.stars;
-      if (got && art.star) {
-        ctx.drawImage(art.star, starX - 7, starsY - 7, 14, 14);
-      } else {
-        ctx.font = "12px sans-serif";
-        ctx.fillText(got ? "⭐" : "▫️", starX, starsY);
-      }
-    }
-
-    // Se trovata la Paperella d'Oro segreta: mostra il trofeo d'arte
-    if (portal.duck) {
-      if (art.goldduck) {
-        ctx.drawImage(art.goldduck, sx + 36, badgeY - 12, 22, 22);
-      }
-    }
-  } else {
+  if (portal.locked) {
     // Lucchetto d'ottone al centro dell'arco chiuso
     ctx.font = "24px sans-serif";
     ctx.textAlign = "center";
@@ -734,7 +869,7 @@ function drawNpc(
       const w = h * (img.width / img.height);
       ctx.drawImage(img, -w / 2, -h, w, h);
     }
-    labelY = -h - 8;
+    drawHubPillBadge(ctx, 0, -h - 18, "MAMMA ORSA", "🌸", { theme: "pink" });
   } else if (npc.id === "papa") {
     // 🧸 PAPÀ ORSO: Sprite 3D illustrato con gilet blu in lana e occhialetti da lettura
     const img = art.hub.papa;
@@ -743,7 +878,7 @@ function drawNpc(
       const w = h * (img.width / img.height);
       ctx.drawImage(img, -w / 2, -h, w, h);
     }
-    labelY = -h - 8;
+    drawHubPillBadge(ctx, 0, -h - 18, "PAPÀ ORSO", "👓", { theme: "blue" });
   } else if (npc.id === "micio") {
     // 🐱 MICIO IL GATTO: Sprite 3D addormentato sul soffice cuscino rosa (art.pillow)
     if (art.pillow) {
@@ -753,8 +888,9 @@ function drawNpc(
     }
     const catImg = art.hub.micio;
     const cw = 56;
+    let ch = 40;
     if (catImg) {
-      const ch = cw * (catImg.height / catImg.width);
+      ch = cw * (catImg.height / catImg.width);
       ctx.drawImage(catImg, -cw / 2, -ch - 2, cw, ch);
     }
 
@@ -762,14 +898,10 @@ function drawNpc(
     ctx.font = '800 13px "Fredoka", sans-serif';
     ctx.fillStyle = "rgba(168, 85, 247, 0.9)";
     ctx.fillText("Zzz...", 20, -44 + Math.sin(t * 2) * 3);
-    labelY = -62;
+    drawHubPillBadge(ctx, 0, -ch - 24, "MICIO IL GATTO", "🐾", { theme: "purple" });
+  } else {
+    drawHubPillBadge(ctx, 0, labelY, npc.name, "⭐", { theme: "gold" });
   }
-
-  // Nome sopra l'NPC in stampatello chiaro
-  ctx.font = '800 12px "Fredoka", "Nunito", sans-serif';
-  ctx.textAlign = "center";
-  ctx.fillStyle = "#451a03";
-  ctx.fillText(npc.name, 0, labelY);
 
   ctx.restore();
 }
@@ -843,21 +975,9 @@ function drawShopGazebo(
     ctx.drawImage(img, sx - bw / 2, sy - bh + 6, bw, bh);
   }
 
-  // Insegna fluttuante sopra il bazar
-  const tagY = sy - 114;
-  ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
-  ctx.beginPath();
-  ctx.roundRect(sx - 44, tagY - 12, 88, 24, 12);
-  ctx.fill();
-  ctx.strokeStyle = "#f59e0b";
-  ctx.lineWidth = 1.8;
-  ctx.stroke();
-
-  ctx.font = '800 11px "Fredoka", "Nunito", sans-serif';
-  ctx.fillStyle = "#713f12";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("🛍️ BAZAR", sx, tagY);
+  // Insegna cartoon 3D a pillola elegante sopra il bazar
+  const tagY = sy - 116;
+  drawHubPillBadge(ctx, sx, tagY, "BAZAR", "🛍️", { theme: "gold" });
 }
 
 /** Trampolino elastico giocattolo 3D illustrato (art.hub.trampoline). */
@@ -869,6 +989,8 @@ function drawCourtyardTrampoline(
   camX: number,
   camY: number,
   t: number,
+  player: HubState["player"],
+  radius: number,
 ) {
   const { sx, sy } = worldToScreen(wx, wy, 0, camX, camY);
 
@@ -887,24 +1009,29 @@ function drawCourtyardTrampoline(
     ctx.drawImage(img, sx - trW / 2, sy - trH + 6, trW, trH);
   }
 
-  // Freccia e indicatore di salto BOING!
-  const arrowBob = Math.sin(t * 6) * 3;
-  ctx.fillStyle = "#0284c7";
-  ctx.beginPath();
-  ctx.roundRect(sx - 36, sy - 54 + arrowBob, 72, 22, 11);
-  ctx.fill();
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 1.8;
-  ctx.stroke();
+  // Se l'orsetto è sul trampolino o sta rimbalzando in volo: NASCONDI la scritta statica!
+  const dist = Math.hypot(player.wx - wx, player.wy - wy);
+  const isInteracting =
+    dist < radius * 1.35 ||
+    (dist < radius * 1.85 && (player.wz > 0.05 || Math.abs(player.vz) > 0.1));
 
-  ctx.font = '800 11px "Fredoka", sans-serif';
-  ctx.fillStyle = "#ffffff";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("⬆️ BOING!", sx, sy - 43 + arrowBob);
+  if (!isInteracting) {
+    // Indicatore invitante prima di salirci sopra: elegante targhetta cartoon che fluttua
+    const arrowBob = Math.sin(t * 6) * 3;
+    drawHubPillBadge(ctx, sx, sy - 60 + arrowBob, "BOING!", "⬆️", { theme: "cyan" });
+  } else {
+    // Quando ci salti sopra: NESSUNA SCRITTA che copre l'orsetto!
+    // Solo un effetto cartoon di onda elastica dinamica sul tappeto
+    const ripple = (t * 4) % 1;
+    ctx.strokeStyle = `rgba(56, 189, 248, ${0.75 * (1 - ripple)})`;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy - 16, 16 + ripple * 16, 8 + ripple * 8, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
 }
 
-/** Pallone da spiaggia con rendering volumetrico 3D. */
+/** Pallone da spiaggia gonfiabile con modellazione sferica volumetrica 3D, riflessi vinilici e keepy-uppy. */
 function drawBeachBall(
   ctx: CanvasRenderingContext2D,
   ball: HubState["toys"]["ball"],
@@ -913,67 +1040,239 @@ function drawBeachBall(
 ) {
   const { sx, sy } = worldToScreen(ball.wx, ball.wy, ball.wz, camX, camY);
 
-  // Ombra a terra del pallone soffusa e scalata con l'altezza
-  const shadowDist = Math.max(0.22, 1 - ball.wz * 0.24);
+  // 1. Scintille e stelline magiche (disegnate attorno al pallone)
+  if (ball.sparks && ball.sparks.length > 0) {
+    for (const spark of ball.sparks) {
+      const spScreen = worldToScreen(spark.x, spark.y, spark.z, camX, camY);
+      ctx.save();
+      ctx.translate(spScreen.sx, spScreen.sy);
+      ctx.rotate(spark.rot);
+      ctx.globalAlpha = Math.max(0, Math.min(1, spark.alpha));
+      ctx.fillStyle = spark.color;
+
+      const ss = spark.size;
+      ctx.beginPath();
+      ctx.moveTo(0, -ss);
+      ctx.quadraticCurveTo(0, 0, ss, 0);
+      ctx.quadraticCurveTo(0, 0, 0, ss);
+      ctx.quadraticCurveTo(0, 0, -ss, 0);
+      ctx.quadraticCurveTo(0, 0, 0, -ss);
+      ctx.fill();
+
+      // Centro luminoso bianco
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(0, 0, ss * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // 2. Ombra a terra del pallone soffusa e scalata con l'altezza
+  const shadowDist = Math.max(0.18, 1 - ball.wz * 0.22);
   const groundPos = worldToScreen(ball.wx, ball.wy, 0, camX, camY);
   const ballTone: "grass" | "warm" =
     ball.wx >= 11.5 && ball.wy >= 11.5 ? "grass" : "warm";
+
+  const squish = Math.max(-0.4, Math.min(0.65, ball.squish || 0));
+  const groundSquishX = 1 + squish * 0.35;
+  const groundSquishY = 1 - squish * 0.25;
 
   drawSoftShadow(
     ctx,
     groundPos.sx,
     groundPos.sy + 2,
-    18 * shadowDist,
-    9 * shadowDist,
+    22 * shadowDist * groundSquishX,
+    11 * shadowDist * groundSquishY,
     {
       tone: ballTone,
-      maxAlpha: 0.35 * shadowDist,
+      maxAlpha: 0.38 * shadowDist,
       contactRatio: 0.45,
-      contactAlpha: 0.2 * shadowDist,
+      contactAlpha: 0.22 * shadowDist,
     },
   );
 
-  const r = ball.radius * 28;
+  // 3. Deformazione elastica Squash & Stretch
+  const r = ball.radius * 30; // Raggio sferico generoso e ben visibile
+  const scaleX = 1 + squish * 0.42;
+  const scaleY = 1 - squish * 0.36;
+
+  // 4. Rendering volumetrico 3D della sfera gonfiabile
   ctx.save();
   ctx.translate(sx, sy);
-  ctx.rotate(ball.rotation);
 
-  // Sfera di base rossa
-  ctx.fillStyle = "#ef4444";
+  // Maschera circolare / ellittica con squish
+  ctx.save();
   ctx.beginPath();
-  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, r * scaleX, r * scaleY, 0, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Spicchi longitudinali gonfiabili (6 colori estivi vivaci alternati)
+  const PANELS = [
+    { top: "#ff4d4f", bot: "#cf1322" }, // Rosso corallo vivace
+    { top: "#ffd666", bot: "#d48806" }, // Giallo sole caldo
+    { top: "#4096ff", bot: "#0958d9" }, // Blu cielo intenso
+    { top: "#ffffff", bot: "#d9d9d9" }, // Bianco vinile perlato
+    { top: "#52c41a", bot: "#237804" }, // Verde smeraldo brillante
+    { top: "#ff9c6e", bot: "#d4380d" }, // Arancione mandarino
+  ];
+
+  // Polo superiore inclinato per prospettiva isometrica (~35 gradi verso la camera)
+  const poleX = 0;
+  const poleY = -r * 0.28 * scaleY;
+
+  // Disegno dei 6 settori curvi dalla calotta polare al perimetro
+  const panelStep = (Math.PI * 2) / 6;
+  for (let i = 0; i < 6; i++) {
+    const theta0 = ball.rotation + i * panelStep;
+    const theta1 = theta0 + panelStep;
+
+    ctx.beginPath();
+    ctx.moveTo(poleX, poleY);
+
+    // Bordo curvo perimetrale
+    const steps = 8;
+    for (let s = 0; s <= steps; s++) {
+      const t = s / steps;
+      const ang = theta0 + (theta1 - theta0) * t;
+      const px = Math.cos(ang) * (r * 1.08 * scaleX);
+      const py = Math.sin(ang) * (r * 1.08 * scaleY);
+      ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+
+    // Gradiente radiale dal polo verso il bordo per dare luce e consistenza ai pannelli
+    const panelGrad = ctx.createRadialGradient(poleX, poleY, r * 0.08, 0, 0, r * 1.15);
+    panelGrad.addColorStop(0, PANELS[i]!.top);
+    panelGrad.addColorStop(1, PANELS[i]!.bot);
+    ctx.fillStyle = panelGrad;
+    ctx.fill();
+  }
+
+  // Saldature bianche a caldo tra i pannelli di plastica
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+  ctx.lineWidth = 1.6;
+  for (let i = 0; i < 6; i++) {
+    const ang = ball.rotation + i * panelStep;
+    const px = Math.cos(ang) * (r * 1.08 * scaleX);
+    const py = Math.sin(ang) * (r * 1.08 * scaleY);
+    ctx.beginPath();
+    ctx.moveTo(poleX, poleY);
+    ctx.lineTo(px, py);
+    ctx.stroke();
+  }
+
+  // Calotta polare superiore in vinile bianco (patch di rinforzo classica)
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.ellipse(poleX, poleY, r * 0.24 * scaleX, r * 0.16 * scaleY, 0, 0, Math.PI * 2);
   ctx.fill();
-
-  // Spicchio giallo
-  ctx.fillStyle = "#eab308";
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.arc(0, 0, r, 0, Math.PI * 0.65);
-  ctx.closePath();
-  ctx.fill();
-
-  // Spicchio blu
-  ctx.fillStyle = "#3b82f6";
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.arc(0, 0, r, Math.PI * 0.65, Math.PI * 1.35);
-  ctx.closePath();
-  ctx.fill();
-
-  // Giunzioni bianche
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 1.8;
-  ctx.beginPath();
-  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(203, 213, 225, 0.9)";
+  ctx.lineWidth = 1.1;
   ctx.stroke();
 
-  // Riflesso speculare lucido
-  ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
+  // Valvola di gonfiaggio trasparente con tappino
+  ctx.fillStyle = "rgba(241, 245, 249, 0.95)";
   ctx.beginPath();
-  ctx.ellipse(-r * 0.35, -r * 0.35, r * 0.35, r * 0.22, -0.6, 0, Math.PI * 2);
+  ctx.ellipse(poleX + 1.2, poleY - 1, r * 0.09 * scaleX, r * 0.06 * scaleY, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(100, 116, 139, 0.8)";
+  ctx.beginPath();
+  ctx.arc(poleX + 1.2, poleY - 1, 1.2, 0, Math.PI * 2);
   ctx.fill();
 
+  // Ombreggiatura volumetrica 3D della sfera (luce solare in alto a sinistra, ombra in basso a destra)
+  const lightX = -r * 0.35 * scaleX;
+  const lightY = -r * 0.35 * scaleY;
+  const sphereShade = ctx.createRadialGradient(lightX, lightY, r * 0.15, 0, 0, r * 1.05);
+  sphereShade.addColorStop(0, "rgba(255, 255, 255, 0.36)");
+  sphereShade.addColorStop(0.48, "rgba(255, 255, 255, 0.0)");
+  sphereShade.addColorStop(0.78, "rgba(15, 10, 30, 0.22)");
+  sphereShade.addColorStop(1, "rgba(15, 10, 25, 0.58)");
+  ctx.fillStyle = sphereShade;
+  ctx.fillRect(-r * 1.5, -r * 1.5, r * 3, r * 3);
+
+  // Riflesso speculare lucido in vinile plastico (highlight a lente)
+  ctx.fillStyle = "rgba(255, 255, 255, 0.76)";
+  ctx.beginPath();
+  ctx.ellipse(
+    -r * 0.36 * scaleX,
+    -r * 0.36 * scaleY,
+    r * 0.34 * scaleX,
+    r * 0.20 * scaleY,
+    -0.62,
+    0,
+    Math.PI * 2,
+  );
+  ctx.fill();
+
+  // Punto luce brillio diamante nel riflesso
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(-r * 0.44 * scaleX, -r * 0.44 * scaleY, r * 0.09, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Rimbalzo di luce calda riflessa da terra sul bordo inferiore
+  const bounceRim = ctx.createRadialGradient(
+    0,
+    r * 0.82 * scaleY,
+    0,
+    0,
+    r * 0.82 * scaleY,
+    r * 0.45,
+  );
+  bounceRim.addColorStop(0, "rgba(255, 235, 190, 0.28)");
+  bounceRim.addColorStop(1, "rgba(255, 235, 190, 0.0)");
+  ctx.fillStyle = bounceRim;
+  ctx.fillRect(-r * 1.2, 0, r * 2.4, r * 1.2);
+
+  // Chiusura maschera
   ctx.restore();
+
+  // Bordo esterno smussato in vinile trasparente
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * scaleX, r * scaleY, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+
+  ctx.restore();
+
+  // 5. Targhetta fluttuante per il minigioco "Keepy-Uppy / Palleggi"
+  if (ball.combo && ball.combo > 0) {
+    const pop = ball.comboPop || 0;
+    const badgeY = sy - r * scaleY - 24 - pop * 6;
+
+    let comboTitle = "1 PALLEGGIO";
+    let comboIcon = "⚽";
+    let comboTheme: "blue" | "cyan" | "gold" | "pink" = "blue";
+
+    if (ball.combo === 2) {
+      comboTitle = "2 PALLEGGI!";
+      comboIcon = "⭐";
+      comboTheme = "cyan";
+    } else if (ball.combo === 3) {
+      comboTitle = "TRIPLETTA!";
+      comboIcon = "🌟";
+      comboTheme = "gold";
+    } else if (ball.combo === 4) {
+      comboTitle = "SUPER PALLEGGIO!";
+      comboIcon = "🔥";
+      comboTheme = "pink";
+    } else if (ball.combo >= 5) {
+      comboTitle = `${ball.combo} CAMPIONE!`;
+      comboIcon = "👑";
+      comboTheme = "gold";
+    }
+
+    const badgeScale = (1 + pop * 0.26) * Math.min(1, (ball.comboTimer || 1) * 2);
+    if (badgeScale > 0.1) {
+      drawHubPillBadge(ctx, sx, badgeY, comboTitle, comboIcon, {
+        theme: comboTheme,
+        scale: badgeScale,
+      });
+    }
+  }
 }
 
 /** Alberi di mele e cespugli di rose illustrati (art.hub.tree, art.hub.bush). */
