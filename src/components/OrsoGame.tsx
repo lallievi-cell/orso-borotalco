@@ -147,7 +147,26 @@ export function OrsoGame() {
     titleT: 0,
     gentle: false,
     touch: false,
+    modalOpen: false,
+    closeModal: null as (() => void) | null,
   });
+
+  const isModalOpen = shopOpen || roomsModalOpen || help || trophies || story;
+  useEffect(() => {
+    bag.current.modalOpen = isModalOpen;
+    bag.current.closeModal = () => {
+      if (shopOpen) setShopOpen(false);
+      else if (roomsModalOpen) setRoomsModalOpen(false);
+      else if (help) setHelp(false);
+      else if (trophies) setTrophies(false);
+      else if (story) setStory(false);
+    };
+    if (isModalOpen) {
+      bag.current.keys.clear();
+      bag.current.hubTap = null;
+      bag.current.hubInteractQueue = false;
+    }
+  }, [isModalOpen, shopOpen, roomsModalOpen, help, trophies, story]);
 
   useEffect(() => {
     const audio = createAudio();
@@ -211,6 +230,13 @@ export function OrsoGame() {
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
+      if (bag.current.modalOpen) {
+        if (e.code === "Escape") {
+          e.preventDefault();
+          bag.current.closeModal?.();
+        }
+        return;
+      }
       bag.current.keys.add(e.code);
       const m = bag.current.mode;
       const gameKey =
@@ -274,79 +300,94 @@ export function OrsoGame() {
 
       // Aggiornamento Hub Overworld se attivo
       if (b.mode === "hub" && b.hub) {
-        const has = (code: string) => b.keys.has(code) || b.injected.has(code);
-        let screenDx = 0;
-        let screenDy = 0;
-        if (has("KeyA") || has("ArrowLeft")) screenDx -= 1;
-        if (has("KeyD") || has("ArrowRight")) screenDx += 1;
-        if (has("KeyW") || has("ArrowUp")) screenDy -= 1;
-        if (has("KeyS") || has("ArrowDown")) screenDy += 1;
+        if (b.modalOpen) {
+          b.hubTap = null;
+          b.hubInteractQueue = false;
+          stepHub(
+            b.hub,
+            {
+              dx: 0,
+              dy: 0,
+              interact: false,
+              tapWorld: null,
+            },
+            dt,
+          );
+        } else {
+          const has = (code: string) => b.keys.has(code) || b.injected.has(code);
+          let screenDx = 0;
+          let screenDy = 0;
+          if (has("KeyA") || has("ArrowLeft")) screenDx -= 1;
+          if (has("KeyD") || has("ArrowRight")) screenDx += 1;
+          if (has("KeyW") || has("ArrowUp")) screenDy -= 1;
+          if (has("KeyS") || has("ArrowDown")) screenDy += 1;
 
-        let dx = 0;
-        let dy = 0;
-        if (screenDx !== 0 || screenDy !== 0) {
-          dx = screenDx / 64 + screenDy / 32;
-          dy = screenDy / 32 - screenDx / 64;
-        }
-
-        const interact = has("Space") || has("Enter") || has("KeyE") || b.hubInteractQueue;
-        b.hubInteractQueue = false;
-
-        const hubEv = stepHub(
-          b.hub,
-          {
-            dx,
-            dy,
-            interact,
-            tapWorld: b.hubTap,
-          },
-          dt,
-        );
-        b.hubTap = null;
-
-        if (hubEv.bounce || hubEv.ballTramp) audio.bounce();
-        if (hubEv.kick) {
-          if ((b.hub.toys.ball.combo || 0) > 1) {
-            audio.coin();
-          } else {
-            audio.jump();
+          let dx = 0;
+          let dy = 0;
+          if (screenDx !== 0 || screenDy !== 0) {
+            dx = screenDx / 64 + screenDy / 32;
+            dy = screenDy / 32 - screenDx / 64;
           }
-        }
-        if (hubEv.ballNpcPass) {
-          audio.speak(hubEv.ballNpcPass.line);
-        }
-        if (hubEv.hoopScore) {
-          audio.swish();
-          audio.power();
-          audio.speak("Canestro! Che bel tiro, campionessa!");
-        }
-        if (hubEv.starPop) {
-          audio.secret();
-        }
-        if (hubEv.treeShake) {
-          audio.rustle();
-        }
-        if (hubEv.musicNote) {
-          audio.note(hubEv.musicNote.freq);
-        }
-        if (hubEv.starReward && hubEv.starReward > 0) {
-          const next = {
-            ...b.save,
-            starsWallet: (b.save.starsWallet ?? 0) + hubEv.starReward,
-          };
-          b.save = next;
-          writeSave(next);
-          setSave(next);
-        }
 
-        if (interact) {
-          const res = interactHub(b.hub, audio);
-          if (res.enterLevel !== undefined) {
-            begin(res.enterLevel);
-            return;
+          const interact = has("Space") || has("Enter") || has("KeyE") || b.hubInteractQueue;
+          b.hubInteractQueue = false;
+
+          const hubEv = stepHub(
+            b.hub,
+            {
+              dx,
+              dy,
+              interact,
+              tapWorld: b.hubTap,
+            },
+            dt,
+          );
+          b.hubTap = null;
+
+          if (hubEv.bounce || hubEv.ballTramp) audio.bounce();
+          if (hubEv.kick) {
+            if ((b.hub.toys.ball.combo || 0) > 1) {
+              audio.coin();
+            } else {
+              audio.jump();
+            }
           }
-          if (res.openShop) {
-            setShopOpen(true);
+          if (hubEv.ballNpcPass) {
+            audio.speak(hubEv.ballNpcPass.line);
+          }
+          if (hubEv.hoopScore) {
+            audio.swish();
+            audio.power();
+            audio.speak("Canestro! Che bel tiro, campionessa!");
+          }
+          if (hubEv.starPop) {
+            audio.secret();
+          }
+          if (hubEv.treeShake) {
+            audio.rustle();
+          }
+          if (hubEv.musicNote) {
+            audio.note(hubEv.musicNote.freq);
+          }
+          if (hubEv.starReward && hubEv.starReward > 0) {
+            const next = {
+              ...b.save,
+              starsWallet: (b.save.starsWallet ?? 0) + hubEv.starReward,
+            };
+            b.save = next;
+            writeSave(next);
+            setSave(next);
+          }
+
+          if (interact) {
+            const res = interactHub(b.hub, audio);
+            if (res.enterLevel !== undefined) {
+              begin(res.enterLevel);
+              return;
+            }
+            if (res.openShop) {
+              setShopOpen(true);
+            }
           }
         }
 
@@ -624,6 +665,7 @@ export function OrsoGame() {
 
   function onCanvasPointerDown(e: ReactPointerEvent<HTMLCanvasElement>) {
     bag.current.audio?.unlock();
+    if (bag.current.modalOpen) return;
     if (bag.current.mode !== "hub" || !bag.current.hub) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -1395,8 +1437,18 @@ export function OrsoGame() {
         ) : null}
 
         {roomsModalOpen ? (
-          <div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-cocoa/50 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-            <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl bg-cream border-4 border-amber-300 p-5 shadow-2xl text-center">
+          <div
+            className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-cocoa/50 backdrop-blur-sm p-4 animate-in fade-in duration-150 select-none"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setRoomsModalOpen(false);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <div
+              className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl bg-cream border-4 border-amber-300 p-5 shadow-2xl text-center"
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">📋</span>
