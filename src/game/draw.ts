@@ -521,7 +521,7 @@ function drawPlatform(ctx: CanvasRenderingContext2D, s: Solid, t: number) {
     const n = Math.max(1, Math.round(s.w / 48));
     const bw = s.w / n;
     const colors = ["#f8b4c0", "#9ed9c8", "#fed776", "#a8d4ff"];
-    const labels = ["A", "B", "C", "★", "♥"];
+    const labels = ["C", "E", "L", "E", "S", "T", "E", "★", "♥", "A", "B"];
     for (let i = 0; i < n; i++) {
       const bx = s.x + i * bw + 2;
       const by = s.y + 2;
@@ -1029,7 +1029,7 @@ export function renderWorld(
     ctx.font = '700 17px "Nunito","Fredoka One",sans-serif';
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("Tocca! 👆", bx, by);
+    ctx.fillText("SALTA! 👆", bx, by);
     ctx.restore();
   }
 

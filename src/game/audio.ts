@@ -88,6 +88,16 @@ export function createAudio() {
     o.stop(t + dur + 0.02);
   }
 
+  function haptic(pattern: number | number[]) {
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+      try {
+        navigator.vibrate(pattern);
+      } catch {
+        // Ignora se non supportato o bloccato dalle impostazioni utente
+      }
+    }
+  }
+
   return {
     unlock() {
       ensure();
@@ -198,10 +208,12 @@ export function createAudio() {
     },
     jump() {
       // Salto morbido "boop!" con risalita dolce
+      haptic(15);
       tone(340, 0.14, "sine", 0.065, undefined, 580);
     },
     coin() {
       // Tintinnio di stellina fatata
+      haptic(20);
       const ac = ensure();
       const t = ac?.currentTime ?? 0;
       tone(880, 0.1, "sine", 0.045, t);
@@ -210,10 +222,12 @@ export function createAudio() {
     },
     stomp() {
       // Salto morbido sulla testa dei nemici: "puf!" di cotone
+      haptic([25, 20, 25]);
       tone(260, 0.12, "sine", 0.06, undefined, 130);
     },
     bounce() {
       // Molla rimbalzante giocosa: "sproing!"
+      haptic([20, 20, 30]);
       const ac = ensure();
       const t = ac?.currentTime ?? 0;
       tone(320, 0.12, "sine", 0.07, t, 680);
@@ -221,10 +235,12 @@ export function createAudio() {
     },
     bump() {
       // Piccolo tocco buffo se un nemico tocca l'orso fermo
+      haptic(30);
       tone(440, 0.08, "triangle", 0.035, undefined, 480);
     },
     secret() {
       // Fanfara paperella d'oro
+      haptic([30, 40, 40, 40, 70]);
       const ac = ensure();
       const t = ac?.currentTime ?? 0;
       [659.25, 783.99, 987.77, 1318.5].forEach((f, i) => {
@@ -233,10 +249,12 @@ export function createAudio() {
     },
     hurt() {
       // Suono soffice senza spavento: piccolo starnuto
+      haptic([40, 30, 40]);
       tone(220, 0.14, "triangle", 0.04, undefined, 160);
     },
     heal() {
       // Cuoricino rigenerato: arpa dolce
+      haptic([20, 30, 30]);
       const ac = ensure();
       const t = ac?.currentTime ?? 0;
       [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
@@ -245,6 +263,7 @@ export function createAudio() {
     },
     power() {
       // Potenziamento magico
+      haptic([25, 25, 45]);
       const ac = ensure();
       const t = ac?.currentTime ?? 0;
       [587.33, 739.99, 880.0, 1174.66].forEach((f, i) => {
@@ -253,12 +272,14 @@ export function createAudio() {
     },
     win() {
       // Trionfo finale
+      haptic([50, 40, 50, 40, 90]);
       const ac = ensure();
       const t = ac?.currentTime ?? 0;
       [523, 659, 784, 880, 1046].forEach((f, i) => tone(f, 0.28, "sine", 0.065, t + i * 0.09));
     },
     checkpoint() {
       // Lampada checkpoint
+      haptic(35);
       const ac = ensure();
       const t = ac?.currentTime ?? 0;
       tone(698.46, 0.12, "sine", 0.04, t);

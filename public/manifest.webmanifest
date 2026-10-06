@@ -1,0 +1,19 @@
+{
+  "name": "Orso Borotalco",
+  "short_name": "Orso",
+  "description": "Aiuta Orso Borotalco ad arrivare in bagno!",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#FFF4E4",
+  "theme_color": "#FFF4E4",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

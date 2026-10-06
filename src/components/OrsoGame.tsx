@@ -1,4 +1,4 @@
-import { ChevronLeft, House, Pause, Play, RotateCcw, Volume2, VolumeX } from "lucide-react";
+import { House, Pause, Play, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import React, { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { asset, loadArt, type Art } from "@/game/assets";
 import { createAudio, type AudioBus } from "@/game/audio";
@@ -45,7 +45,7 @@ type WinInfo = {
 
 const ZERO: Input = { x: 0, jumpHeld: false, jumpPressed: false, down: false };
 const ROOM_ICONS = ["🛋️", "🍳", "🌸", "🚪", "🧺", "🧸", "🫧", "🚽"];
-const NAMES = ["IL SALOTTO", "LA CUCINA", "IL GIARDINO", "IL CORRIDOIO", "LA LAVANDERIA", "LA CAMERETTA", "IL TERRAZZO", "IL BAGNO"];
+const NAMES = ["SALOTTO", "CUCINA", "GIARDINO", "CORRIDOIO", "LAVANDERIA", "CAMERETTA", "TERRAZZO", "BAGNO"];
 
 const STORY_PAGES = [
   {
@@ -635,10 +635,11 @@ export function OrsoGame() {
               type="button"
               data-move
               aria-label="Indietro"
-              className="pointer-events-auto grid h-24 w-24 place-items-center rounded-full bg-foam/95 text-cocoa shadow-xl landscape:h-28 landscape:w-28 active:scale-90 transition-transform border-2 border-cocoa/10"
+              className="pointer-events-auto flex flex-col items-center justify-center h-24 w-24 rounded-full bg-foam/95 text-cocoa shadow-xl landscape:h-28 landscape:w-28 active:scale-90 transition-transform font-display border-2 border-cocoa/10 select-none"
               {...hold("ArrowLeft")}
             >
-              <ChevronLeft className="h-12 w-12" />
+              <span className="text-2xl leading-none">⬅️</span>
+              <span className="text-xs font-bold tracking-wider mt-0.5">INDIETRO</span>
             </button>
             <button
               type="button"
@@ -810,18 +811,18 @@ export function OrsoGame() {
               </div>
 
               <div className="flex items-center justify-between w-full mt-2 px-3">
-                <span className="text-xs text-cocoa/60 font-display">Tocca per andare avanti</span>
+                <span className="text-xs text-cocoa/70 font-display font-bold uppercase tracking-wide">TOCCA PER ANDARE AVANTI 👆</span>
                 <span
                   role="button"
                   tabIndex={0}
-                  className="text-xs font-bold text-cocoa/80 hover:text-cocoa underline p-1 cursor-pointer"
+                  className="text-xs font-bold text-cocoa/80 hover:text-cocoa uppercase underline p-1 cursor-pointer tracking-wider"
                   onClick={(e) => {
                     e.stopPropagation();
                     setStory(false);
                     begin(0);
                   }}
                 >
-                  Salta storia ⏩
+                  SALTA ⏩
                 </span>
               </div>
             </div>
@@ -833,10 +834,10 @@ export function OrsoGame() {
             <div className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-card bg-foam p-5 shadow-2xl text-center border-4 border-gold/30">
               <div className="flex items-center justify-center gap-2">
                 <span className="text-3xl animate-bounce">🦆</span>
-                <h2 className="font-display text-3xl sm:text-4xl text-cocoa">Galleria Paperelle d'Oro</h2>
+                <h2 className="font-display text-3xl sm:text-4xl text-cocoa uppercase font-bold">GALLERIA PAPERELLE D'ORO</h2>
               </div>
-              <p className="mt-1 text-sm text-cocoa/80">
-                In ogni stanza della casa è nascosta una paperella d'oro segreta. Quante ne hai trovate?
+              <p className="mt-1 text-sm text-cocoa/80 uppercase font-bold">
+                IN OGNI STANZA DELLA CASA È NASCOSTA UNA PAPERELLA D'ORO SEGRETA! QUANTE NE HAI TROVATE?
               </p>
 
               <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -863,9 +864,9 @@ export function OrsoGame() {
                           <span className="text-2xl filter grayscale opacity-40">🦆</span>
                         )}
                       </div>
-                      <span className="font-display text-sm leading-tight text-cocoa mt-1">{name}</span>
-                      <span className="text-[11px] font-bold mt-0.5" style={{ color: found ? "#b45309" : "#8c7e72" }}>
-                        {found ? "Trovata! ✨" : locked ? "Stanza chiusa" : "Nascosta... 🔍"}
+                      <span className="font-display text-sm leading-tight text-cocoa mt-1 uppercase font-bold">{name}</span>
+                      <span className="text-[11px] font-bold mt-0.5 uppercase" style={{ color: found ? "#b45309" : "#8c7e72" }}>
+                        {found ? "TROVATA! ✨" : locked ? "🔒 CHIUSA" : "NASCOSTA... 🔍"}
                       </span>
                     </div>
                   );
@@ -873,17 +874,17 @@ export function OrsoGame() {
               </div>
 
               {save.ducks.filter(Boolean).length === 8 ? (
-                <div className="mt-4 p-2.5 rounded-2xl bg-amber-100 border border-gold text-cocoa font-display text-base">
-                  🌟 Complimenti! Hai tutte le 8 paperelle! Sei il campione supremo di Orso Borotalco! 👑
+                <div className="mt-4 p-2.5 rounded-2xl bg-amber-100 border border-gold text-cocoa font-display text-base font-bold uppercase">
+                  🌟 EVVIVA {PLAYER_NAME.toUpperCase()}! HAI TUTTE LE 8 PAPERELLE D'ORO! CAMPIONESSA SUPREMA! 👑
                 </div>
               ) : null}
 
               <button
                 type="button"
-                className="mt-4 min-h-12 w-full rounded-full bg-peach font-display text-xl text-cocoa shadow active:scale-95 transition-transform"
+                className="mt-4 min-h-12 w-full rounded-full bg-peach font-display text-xl text-cocoa shadow active:scale-95 transition-transform uppercase font-bold"
                 onClick={() => setTrophies(false)}
               >
-                Torna ai Giochi
+                TORNA AI GIOCHI 🏠
               </button>
             </div>
           </div>
