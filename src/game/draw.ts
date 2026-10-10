@@ -1615,31 +1615,27 @@ export function renderWorld(
   if (art.door) {
     const dx = sim.goal.x + sim.goal.w / 2;
     const dy = sim.goal.y + sim.goal.h;
-    ctx.fillStyle = "rgba(90,56,40,0.18)";
+    const dh = 208;
+    const dw = dh * (art.door.width / art.door.height);
+
+    // Ombra di contatto soffice a terra proporzionata alla porta
+    ctx.fillStyle = "rgba(90,56,40,0.22)";
     ctx.beginPath();
-    ctx.ellipse(dx, dy - 4, 70, 16, 0, 0, Math.PI * 2);
+    ctx.ellipse(dx, dy - 3, dw * 0.58, 12, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = sim.theme === "bagno" ? "#d7f3ee" : "#fff6ec";
-    ctx.beginPath();
-    ctx.moveTo(dx - 78, dy);
-    ctx.lineTo(dx - 78, dy - 168);
-    ctx.quadraticCurveTo(dx, dy - 250, dx + 78, dy - 168);
-    ctx.lineTo(dx + 78, dy);
-    ctx.closePath();
-    ctx.fill();
+
     const near = Math.abs(sim.player.x - sim.goal.x) < 340;
     if (near) {
       ctx.save();
-      ctx.globalAlpha = 0.2 + Math.sin(sim.t * 4) * 0.1;
+      ctx.globalAlpha = 0.22 + Math.sin(sim.t * 4) * 0.1;
       ctx.fillStyle = "#e8b63a";
       ctx.beginPath();
-      ctx.ellipse(dx, dy - 8, 58, 14, 0, 0, Math.PI * 2);
+      ctx.ellipse(dx, dy - 6, dw * 0.48, 10, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
-    const dh = 200;
-    const dw = dh * (art.door.width / art.door.height);
-    ctx.drawImage(art.door, sim.goal.x + sim.goal.w / 2 - dw / 2, sim.goal.y + sim.goal.h - dh, dw, dh);
+
+    ctx.drawImage(art.door, sim.goal.x + sim.goal.w / 2 - dw / 2, dy - dh, dw, dh);
 
     if ((sim.theme === "bagno" || sim.finaleLevel) && art.toilet) {
       const th = 130;
@@ -1657,10 +1653,10 @@ export function renderWorld(
     if (sim.finale > 0 && sim.finale < 1.4) {
       const k = Math.min(1, (1.4 - sim.finale) / 0.7);
       ctx.fillStyle = sim.theme === "bagno" ? "#d7f3ee" : "#f6efe4";
-      ctx.fillRect(dx - 62, dy - 188, 124 * k, 188);
+      ctx.fillRect(dx - dw * 0.4, dy - dh * 0.88, dw * 0.8 * k, dh * 0.88);
       ctx.fillStyle = "#c9843a";
       ctx.beginPath();
-      ctx.arc(dx - 62 + 124 * k - 14, dy - 96, 5, 0, Math.PI * 2);
+      ctx.arc(dx - dw * 0.4 + dw * 0.8 * k - 8, dy - dh * 0.45, 5, 0, Math.PI * 2);
       ctx.fill();
     }
   } else {
